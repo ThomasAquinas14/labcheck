@@ -89,6 +89,7 @@ After Pages deploys, check:
 - GitHub Action guide opens.
 - Launch kit opens.
 - Public deploy guide opens.
+- The landing page source includes `og:image`, `twitter:image`, and canonical metadata pointing at `https://thomasaquinas14.github.io/labcheck/`.
 
 ---
 

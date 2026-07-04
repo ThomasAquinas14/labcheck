@@ -69,12 +69,19 @@ def test_public_pages_have_share_metadata() -> None:
 
     assert '<meta name="description"' in landing
     assert 'property="og:title"' in landing
-    assert 'name="twitter:card"' in landing
+    assert 'property="og:site_name" content="labcheck"' in landing
+    assert 'property="og:url" content="https://thomasaquinas14.github.io/labcheck/"' in landing
+    assert 'property="og:image" content="https://thomasaquinas14.github.io/labcheck/docs/assets/scorecard-preview.svg"' in landing
+    assert 'name="twitter:card" content="summary_large_image"' in landing
+    assert 'name="twitter:image" content="https://thomasaquinas14.github.io/labcheck/docs/assets/scorecard-preview.svg"' in landing
+    assert '<link rel="canonical" href="https://thomasaquinas14.github.io/labcheck/">' in landing
     assert 'name="theme-color"' in landing
     assert "No-key reproducibility audits" in landing
     assert '<meta name="description"' in demo
     assert 'property="og:title"' in demo
-    assert 'name="twitter:card"' in demo
+    assert 'property="og:url" content="https://thomasaquinas14.github.io/labcheck/demo.html"' in demo
+    assert 'name="twitter:card" content="summary_large_image"' in demo
+    assert '<link rel="canonical" href="https://thomasaquinas14.github.io/labcheck/demo.html">' in demo
     assert "Everything stays local" in demo
 
 
