@@ -25,6 +25,7 @@ DOC_REWRITES = {
 
 DOC_FILES = [
     "case-studies.md",
+    "faq.md",
     "github-publish-guide.md",
     "github-action.md",
     "lab-adoption-guide.md",

@@ -224,6 +224,7 @@ You can also inspect the generated sample audits directly:
 - [Static landing page](site/index.html)
 - [Browser local-file demo](site/demo.html)
 - [Public case studies](docs/case-studies.md)
+- [FAQ](docs/faq.md)
 - [GitHub publish guide](docs/github-publish-guide.md)
 - [GitHub Action guide](docs/github-action.md)
 - [Lab and team adoption guide](docs/lab-adoption-guide.md)
@@ -416,6 +417,7 @@ That means you can host a landing page and sample audits publicly without worryi
 Contributions are welcome, especially small reproducibility checks, false-positive reductions, docs, and public case studies.
 
 - [Contributing guide](CONTRIBUTING.md)
+- [FAQ](docs/faq.md)
 - [Security policy](SECURITY.md)
 
 Please keep the core promise intact: no API keys, no paid service dependency, no default hosted backend, and deterministic checks that produce concrete evidence.

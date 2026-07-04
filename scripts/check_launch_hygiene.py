@@ -23,6 +23,7 @@ REQUIRED_FILES = [
     "action.yml",
     "docs/assets/scorecard-preview.svg",
     "docs/case-studies.md",
+    "docs/faq.md",
     "docs/github-publish-guide.md",
     "docs/github-action.md",
     "docs/lab-adoption-guide.md",
