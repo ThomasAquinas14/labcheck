@@ -1,0 +1,17 @@
+# Paths that are intentionally noisy for reproducibility audits.
+# Keep this small by default; users can copy and tune it for their repos.
+exclude = [
+  ".ipynb_checkpoints/**",
+  "dist/**",
+  "docs/sample-audits/**",
+  "examples/**",
+  "labcheck-audit/**",
+  "site/**",
+  "tests/**",
+]
+
+# labcheck is a general Python tool, not an experiment repository; LC010 is
+# useful for research workflows but noisy when scanning the tool's own modules.
+disabled_checks = [
+  "LC010",
+]

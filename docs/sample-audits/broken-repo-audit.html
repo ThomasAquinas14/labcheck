@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>labcheck Report</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --ink: #17202a;
+      --card: #fffdf8;
+      --border: #d8cdb9;
+      --accent: #0f766e;
+      --warn: #b45309;
+      --danger: #b91c1c;
+    }
+    body { font-family: Georgia, 'Times New Roman', serif; background: linear-gradient(180deg, #f4efe6, #fbfaf7); color: var(--ink); margin: 0; }
+    main { max-width: 1100px; margin: 0 auto; padding: 40px 20px 64px; }
+    .hero, .panel, .finding { background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 10px 30px rgba(23,32,42,0.06); }
+    .hero { padding: 28px; margin-bottom: 24px; }
+    h1, h2 { margin: 0 0 12px; }
+    .overall { font-size: 52px; font-weight: 700; color: var(--accent); }
+    .meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px; }
+    .meta span { background: #efe7d7; border-radius: 999px; padding: 8px 14px; font-size: 14px; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 24px 0; }
+    .score-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+    .score { font-size: 34px; font-weight: 700; color: var(--accent); }
+    .score-title { font-weight: 700; margin-top: 8px; }
+    .panel { padding: 22px; margin-top: 24px; }
+    .risk-list { display: grid; gap: 14px; margin-top: 14px; }
+    .risk-item { border-top: 1px solid var(--border); padding: 14px 0; }
+    .risk-item:first-child { border-top: 0; padding-top: 0; }
+    .remediation-list { counter-reset: fix-order; display: grid; gap: 14px; margin-top: 14px; }
+    .remediation-item { border: 1px solid var(--border); border-radius: 16px; padding: 16px; background: #fcfaf5; }
+    .step { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; background: var(--accent); color: white; font-weight: 700; }
+    .finding-list { display: grid; gap: 14px; }
+    .finding { padding: 18px; }
+    .truncation-note { border: 1px dashed var(--border); border-radius: 16px; padding: 14px; background: #f8f4ec; color: #5b6470; }
+    .finding-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .badge { border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; background: #efe7d7; }
+    .severity-high .badge { background: #fee2e2; color: var(--danger); }
+    .severity-medium .badge { background: #fef3c7; color: var(--warn); }
+    .file { color: #5b6470; font-family: Consolas, monospace; }
+    .graph-shell { background: linear-gradient(180deg, #fcfaf5, #f3ecdf); border: 1px solid var(--border); border-radius: 18px; padding: 14px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-top: 1px solid var(--border); text-align: left; padding: 12px 8px; }
+    th { border-top: 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <p>labcheck reproducibility audit</p>
+      <h1>examples/broken-repo</h1>
+      <div class="overall">44</div>
+      <div class="meta">
+        <span>4 high</span>
+        <span>6 medium</span>
+        <span>4 graph nodes</span>
+        <span>2 graph edges</span>
+      </div>
+    </section>
+
+    <section class="grid">
+        <div class="score-card">
+          <div class="score">66</div>
+          <div class="score-title">Environment Rebuildability</div>
+          <p>Can a new person recreate the environment without guesswork?</p>
+        </div>
+        
+        <div class="score-card">
+          <div class="score">3</div>
+          <div class="score-title">Notebook Determinism</div>
+          <p>Will notebooks run cleanly from top to bottom without invisible state?</p>
+        </div>
+        
+        <div class="score-card">
+          <div class="score">74</div>
+          <div class="score-title">Artifact Availability</div>
+          <p>Are referenced inputs and generated artifacts present or clearly accounted for?</p>
+        </div>
+        
+        <div class="score-card">
+          <div class="score">86</div>
+          <div class="score-title">Portability</div>
+          <p>Does the repo avoid machine-specific assumptions and brittle paths?</p>
+        </div>
+        
+        <div class="score-card">
+          <div class="score">80</div>
+          <div class="score-title">Onboarding Readiness</div>
+          <p>How likely is a new contributor to succeed from the docs and structure alone?</p>
+        </div>
+        </section>
+
+    <section class="panel">
+      <h2>Top risks</h2>
+      <div class="risk-list">
+        <article class="risk-item severity-high">
+          <div class="finding-head">
+            <span class="badge">HIGH</span>
+            <strong>LC001 - Suspicious notebook execution order</strong>
+          </div>
+          <p class="file">1 finding across 1 file</p>
+          <p><strong>First evidence:</strong> notebooks/analysis.ipynb - Execution counts are non-monotonic: [1, 5, 3]</p>
+          <p><strong>Suggested fix:</strong> Restart the kernel and run all cells before committing the notebook.</p>
+        </article>
+        
+        <article class="risk-item severity-high">
+          <div class="finding-head">
+            <span class="badge">HIGH</span>
+            <strong>LC002 - Likely hidden notebook state</strong>
+          </div>
+          <p class="file">1 finding across 1 file</p>
+          <p><strong>First evidence:</strong> notebooks/analysis.ipynb - 1 cells reference names with no visible prior definition; examples: cell 3: external_state</p>
+          <p><strong>Suggested fix:</strong> Make setup cells explicit and ensure the notebook runs top-to-bottom from a fresh kernel.</p>
+        </article>
+        
+        <article class="risk-item severity-high">
+          <div class="finding-head">
+            <span class="badge">HIGH</span>
+            <strong>LC005 - Referenced input artifact missing from repo</strong>
+          </div>
+          <p class="file">1 finding across 1 file</p>
+          <p><strong>First evidence:</strong> notebooks/analysis.ipynb - Reads &#x27;data/train.csv&#x27;, but that path is not present in the scanned repo.</p>
+          <p><strong>Suggested fix:</strong> Commit the artifact, document how to obtain it, or make the input contract explicit.</p>
+        </article>
+        
+        <article class="risk-item severity-high">
+          <div class="finding-head">
+            <span class="badge">HIGH</span>
+            <strong>LC011 - Notebook contains saved error output</strong>
+          </div>
+          <p class="file">1 finding across 1 file</p>
+          <p><strong>First evidence:</strong> notebooks/analysis.ipynb - 1 saved error output(s); examples: cell 3: NameError: name &#x27;external_state&#x27; is not defined</p>
+          <p><strong>Suggested fix:</strong> Fix the failing cell, restart the kernel, run all cells, and save the notebook without error outputs.</p>
+        </article>
+        
+        <article class="risk-item severity-medium">
+          <div class="finding-head">
+            <span class="badge">MEDIUM</span>
+            <strong>LC007 - Randomness used without visible seeding</strong>
+          </div>
+          <p class="file">2 findings across 2 files</p>
+          <p><strong>First evidence:</strong> notebooks/analysis.ipynb - Detected randomness-related APIs, but no obvious seed call in the same file.</p>
+          <p><strong>Suggested fix:</strong> Set and document seeds for the randomness sources used in this workflow.</p>
+        </article>
+        </div>
+    </section>
+
+    <section class="panel">
+      <h2>Remediation plan</h2>
+      <div class="remediation-list">
+        <article class="remediation-item severity-high">
+          <div class="finding-head">
+            <span class="step">1</span>
+            <strong>Fix LC001 first because it affects 1 finding across 1 file.</strong>
+          </div>
+          <p><strong>Suggested fix:</strong> Restart the kernel and run all cells before committing the notebook.</p>
+          <p class="file">notebooks/analysis.ipynb - Execution counts are non-monotonic: [1, 5, 3]</p>
+        </article>
+        
+        <article class="remediation-item severity-high">
+          <div class="finding-head">
+            <span class="step">2</span>
+            <strong>Fix LC002 first because it affects 1 finding across 1 file.</strong>
+          </div>
+          <p><strong>Suggested fix:</strong> Make setup cells explicit and ensure the notebook runs top-to-bottom from a fresh kernel.</p>
+          <p class="file">notebooks/analysis.ipynb - 1 cells reference names with no visible prior definition; examples: cell 3: external_state</p>
+        </article>
+        
+        <article class="remediation-item severity-high">
+          <div class="finding-head">
+            <span class="step">3</span>
+            <strong>Fix LC005 first because it affects 1 finding across 1 file.</strong>
+          </div>
+          <p><strong>Suggested fix:</strong> Commit the artifact, document how to obtain it, or make the input contract explicit.</p>
+          <p class="file">notebooks/analysis.ipynb - Reads &#x27;data/train.csv&#x27;, but that path is not present in the scanned repo.</p>
+        </article>
+        
+        <article class="remediation-item severity-high">
+          <div class="finding-head">
+            <span class="step">4</span>
+            <strong>Fix LC011 first because it affects 1 finding across 1 file.</strong>
+          </div>
+          <p><strong>Suggested fix:</strong> Fix the failing cell, restart the kernel, run all cells, and save the notebook without error outputs.</p>
+          <p class="file">notebooks/analysis.ipynb - 1 saved error output(s); examples: cell 3: NameError: name &#x27;external_state&#x27; is not defined</p>
+        </article>
+        
+        <article class="remediation-item severity-medium">
+          <div class="finding-head">
+            <span class="step">5</span>
+            <strong>Fix LC007 first because it affects 2 findings across 2 files.</strong>
+          </div>
+          <p><strong>Suggested fix:</strong> Set and document seeds for the randomness sources used in this workflow.</p>
+          <p class="file">notebooks/analysis.ipynb - Detected randomness-related APIs, but no obvious seed call in the same file.</p>
+        </article>
+        </div>
+    </section>
+
+    <section class="panel">
+      <h2>Provenance graph</h2>
+      <div class="graph-shell"><svg viewBox='0 0 640 250' role='img' aria-label='Provenance graph'><path d='M 120 90 C 220 90, 220 90, 320 90' fill='none' stroke='#0f766e' stroke-width='3' stroke-opacity='0.45' /><path d='M 320 90 C 420 90, 420 90, 520 90' fill='none' stroke='#0f766e' stroke-width='3' stroke-opacity='0.45' />
+            <g>
+              <rect x="240" y="66" width="160" height="48" rx="14" fill="#d1fae5" stroke="#d8cdb9" />
+              <text x="320" y="86" text-anchor="middle" font-size="12" font-weight="700" fill="#17202a">NOTEBOOK</text>
+              <text x="320" y="104" text-anchor="middle" font-size="12" fill="#17202a">analysis.ipynb</text>
+            </g>
+            
+            <g>
+              <rect x="40" y="66" width="160" height="48" rx="14" fill="#fef3c7" stroke="#d8cdb9" />
+              <text x="120" y="86" text-anchor="middle" font-size="12" font-weight="700" fill="#17202a">INPUT</text>
+              <text x="120" y="104" text-anchor="middle" font-size="12" fill="#17202a">train.csv</text>
+            </g>
+            
+            <g>
+              <rect x="440" y="66" width="160" height="48" rx="14" fill="#fee2e2" stroke="#d8cdb9" />
+              <text x="520" y="86" text-anchor="middle" font-size="12" font-weight="700" fill="#17202a">ARTIFACT</text>
+              <text x="520" y="104" text-anchor="middle" font-size="12" fill="#17202a">report.csv</text>
+            </g>
+            
+            <g>
+              <rect x="240" y="156" width="160" height="48" rx="14" fill="#dbeafe" stroke="#d8cdb9" />
+              <text x="320" y="176" text-anchor="middle" font-size="12" font-weight="700" fill="#17202a">PYTHON</text>
+              <text x="320" y="194" text-anchor="middle" font-size="12" fill="#17202a">experiment.py</text>
+            </g>
+            </svg></div>
+    </section>
+
+    <section class="panel">
+      <h2>Provenance edges</h2>
+      <table>
+        <thead><tr><th>Source</th><th>Edge</th><th>Target</th></tr></thead>
+        <tbody><tr><td>data/train.csv</td><td>reads</td><td>notebooks/analysis.ipynb</td></tr><tr><td>notebooks/analysis.ipynb</td><td>writes</td><td>outputs/report.csv</td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Findings</h2>
+      <div class="finding-list">
+        <article class="finding severity-high">
+          <div class="finding-head">
+            <span class="badge">HIGH</span>
+            <strong>LC001 - Suspicious notebook execution order</strong>
+          </div>
+          <p class="file">notebooks/analysis.ipynb</p>
+          <p><strong>Evidence:</strong> Execution counts are non-monotonic: [1, 5, 3]</p>
+          <p><strong>Why it matters:</strong> The notebook may rely on hidden runtime state rather than a clean top-to-bottom execution path.</p>
+          <p><strong>Suggested fix:</strong> Restart the kernel and run all cells before committing the notebook.</p>
+        </article>
+        
+        <article class="finding severity-low">
+          <div class="finding-head">
+            <span class="badge">LOW</span>
+            <strong>LC015 - Notebook is missing kernel metadata</strong>
+          </div>
+          <p class="file">notebooks/analysis.ipynb</p>
+          <p><strong>Evidence:</strong> Notebook metadata is missing kernelspec.name and language_info.name.</p>
+          <p><strong>Why it matters:</strong> A notebook handoff is harder when reviewers cannot tell which kernel and language the author intended.</p>
+          <p><strong>Suggested fix:</strong> Open the notebook with the intended kernel and save it, or add kernelspec and language_info metadata before sharing.</p>
+        </article>
+        
+        <article class="finding severity-high">
+          <div class="finding-head">
+            <span class="badge">HIGH</span>
+            <strong>LC002 - Likely hidden notebook state</strong>
+          </div>
+          <p class="file">notebooks/analysis.ipynb</p>
+          <p><strong>Evidence:</strong> 1 cells reference names with no visible prior definition; examples: cell 3: external_state</p>
+          <p><strong>Why it matters:</strong> The notebook may only work in the original author&#x27;s live kernel rather than from a clean rerun.</p>
+          <p><strong>Suggested fix:</strong> Make setup cells explicit and ensure the notebook runs top-to-bottom from a fresh kernel.</p>
+        </article>
+        
+        <article class="finding severity-high">
+          <div class="finding-head">
+            <span class="badge">HIGH</span>
+            <strong>LC011 - Notebook contains saved error output</strong>
+          </div>
+          <p class="file">notebooks/analysis.ipynb</p>
+          <p><strong>Evidence:</strong> 1 saved error output(s); examples: cell 3: NameError: name &#x27;external_state&#x27; is not defined</p>
+          <p><strong>Why it matters:</strong> A committed traceback is strong evidence that the notebook was not saved after a clean successful rerun.</p>
+          <p><strong>Suggested fix:</strong> Fix the failing cell, restart the kernel, run all cells, and save the notebook without error outputs.</p>
+        </article>
+        
+        <article class="finding severity-medium">
+          <div class="finding-head">
+            <span class="badge">MEDIUM</span>
+            <strong>LC012 - Missing Python runtime version</strong>
+          </div>
+          <p class="file">.</p>
+          <p><strong>Evidence:</strong> Found runnable notebooks or Python files, but no Python runtime version is specified.</p>
+          <p><strong>Why it matters:</strong> A repo can have pinned packages and still fail to rebuild if users guess the wrong Python version.</p>
+          <p><strong>Suggested fix:</strong> Declare the Python version with requires-python, .python-version, runtime.txt, Pipfile [requires], setup.cfg python_requires, or a Conda python= dependency.</p>
+        </article>
+        
+        <article class="finding severity-medium">
+          <div class="finding-head">
+            <span class="badge">MEDIUM</span>
+            <strong>LC004 - Unpinned dependency</strong>
+          </div>
+          <p class="file">requirements.txt</p>
+          <p><strong>Evidence:</strong> Dependency &#x27;pandas&#x27; in requirements.txt does not pin a version.</p>
+          <p><strong>Why it matters:</strong> Environment rebuilds can drift over time when critical dependencies are unpinned.</p>
+          <p><strong>Suggested fix:</strong> Pin this dependency to an exact or tightly bounded version.</p>
+        </article>
+        
+        <article class="finding severity-medium">
+          <div class="finding-head">
+            <span class="badge">MEDIUM</span>
+            <strong>LC006 - Absolute machine-local path</strong>
+          </div>
+          <p class="file">notebooks/analysis.ipynb</p>
+          <p><strong>Evidence:</strong> Found path-like string &#x27;C:\\Users\\researcher\\Desktop\\data.csv&#x27;.</p>
+          <p><strong>Why it matters:</strong> Hardcoded local paths make the repo brittle on other machines and operating systems.</p>
+          <p><strong>Suggested fix:</strong> Use project-relative paths, environment variables, or documented configuration.</p>
+        </article>
+        
+        <article class="finding severity-high">
+          <div class="finding-head">
+            <span class="badge">HIGH</span>
+            <strong>LC005 - Referenced input artifact missing from repo</strong>
+          </div>
+          <p class="file">notebooks/analysis.ipynb</p>
+          <p><strong>Evidence:</strong> Reads &#x27;data/train.csv&#x27;, but that path is not present in the scanned repo.</p>
+          <p><strong>Why it matters:</strong> A new user may not be able to run the workflow because required inputs are missing.</p>
+          <p><strong>Suggested fix:</strong> Commit the artifact, document how to obtain it, or make the input contract explicit.</p>
+        </article>
+        
+        <article class="finding severity-medium">
+          <div class="finding-head">
+            <span class="badge">MEDIUM</span>
+            <strong>LC007 - Randomness used without visible seeding</strong>
+          </div>
+          <p class="file">notebooks/analysis.ipynb</p>
+          <p><strong>Evidence:</strong> Detected randomness-related APIs, but no obvious seed call in the same file.</p>
+          <p><strong>Why it matters:</strong> Results may drift between runs even if the code itself executes successfully.</p>
+          <p><strong>Suggested fix:</strong> Set and document seeds for the randomness sources used in this workflow.</p>
+        </article>
+        
+        <article class="finding severity-medium">
+          <div class="finding-head">
+            <span class="badge">MEDIUM</span>
+            <strong>LC007 - Randomness used without visible seeding</strong>
+          </div>
+          <p class="file">experiment.py</p>
+          <p><strong>Evidence:</strong> Detected randomness-related APIs, but no obvious seed call in the same file.</p>
+          <p><strong>Why it matters:</strong> Results may drift between runs even if the code itself executes successfully.</p>
+          <p><strong>Suggested fix:</strong> Set and document seeds for the randomness sources used in this workflow.</p>
+        </article>
+        
+        <article class="finding severity-medium">
+          <div class="finding-head">
+            <span class="badge">MEDIUM</span>
+            <strong>LC008 - README command references a missing path</strong>
+          </div>
+          <p class="file">README.md</p>
+          <p><strong>Evidence:</strong> Command &#x27;python scripts/train.py&#x27; points to &#x27;scripts/train.py&#x27;, which is not present.</p>
+          <p><strong>Why it matters:</strong> Setup instructions lose trust quickly when they point to files that do not exist.</p>
+          <p><strong>Suggested fix:</strong> Update the README command or restore the missing entrypoint.</p>
+        </article>
+        
+        <article class="finding severity-low">
+          <div class="finding-head">
+            <span class="badge">LOW</span>
+            <strong>LC010 - Workflow node is disconnected from data lineage</strong>
+          </div>
+          <p class="file">experiment.py</p>
+          <p><strong>Evidence:</strong> This analysis file has no visible input or output edges in the provenance graph.</p>
+          <p><strong>Why it matters:</strong> Disconnected workflow files are hard for new contributors to place in the actual experiment pipeline.</p>
+          <p><strong>Suggested fix:</strong> Document whether this file is archival, illustrative, or part of the real workflow, or connect it to visible inputs and outputs.</p>
+        </article>
+        </div>
+    </section>
+  </main>
+</body>
+</html>

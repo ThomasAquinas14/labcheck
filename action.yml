@@ -1,0 +1,220 @@
+name: "labcheck reproducibility audit"
+description: "Run a no-key reproducibility audit for notebook-heavy research and ML repositories."
+author: "Thomas Aquinas"
+
+inputs:
+  target:
+    description: "Folder, notebook, zip archive, or public GitHub repo URL to scan."
+    required: false
+    default: "."
+  report-format:
+    description: "Human-readable report format: text, markdown, json, or html."
+    required: false
+    default: "markdown"
+  report-path:
+    description: "Path where the human-readable report should be written."
+    required: false
+    default: "labcheck-report.md"
+  json-path:
+    description: "Path where the machine-readable JSON report should be written."
+    required: false
+    default: "labcheck-report.json"
+  sarif-path:
+    description: "Path where the SARIF report should be written."
+    required: false
+    default: "labcheck-report.sarif"
+  badge-path:
+    description: "Path where the static SVG score badge should be written."
+    required: false
+    default: "labcheck-badge.svg"
+  scorecard-path:
+    description: "Path where the compact Markdown scorecard should be written."
+    required: false
+    default: "labcheck-scorecard.md"
+  baseline-path:
+    description: "Optional labcheck baseline JSON. Matching known findings are ignored."
+    required: false
+    default: ""
+  config-path:
+    description: "Optional .labcheck.toml config path for excluding archived, generated, or intentionally noisy files."
+    required: false
+    default: ""
+  max-findings:
+    description: "Maximum detailed findings to include in text, Markdown, and HTML reports. Use 'all' for every detail."
+    required: false
+    default: "100"
+  job-summary:
+    description: "Append the Markdown report to the GitHub Actions job summary."
+    required: false
+    default: "true"
+  fail-on:
+    description: "Fail the workflow if findings exist at or above this severity: none, high, medium, or low."
+    required: false
+    default: "none"
+  min-score:
+    description: "Optional minimum overall reproducibility score from 0 to 100. Leave empty to disable score gating."
+    required: false
+    default: ""
+  python-version:
+    description: "Python version used to run labcheck."
+    required: false
+    default: "3.11"
+
+outputs:
+  report-path:
+    description: "Path to the human-readable labcheck report."
+    value: ${{ steps.paths.outputs.report-path }}
+  json-path:
+    description: "Path to the machine-readable labcheck JSON report."
+    value: ${{ steps.paths.outputs.json-path }}
+  sarif-path:
+    description: "Path to the labcheck SARIF report."
+    value: ${{ steps.paths.outputs.sarif-path }}
+  badge-path:
+    description: "Path to the labcheck score badge SVG."
+    value: ${{ steps.paths.outputs.badge-path }}
+  scorecard-path:
+    description: "Path to the compact labcheck Markdown scorecard."
+    value: ${{ steps.paths.outputs.scorecard-path }}
+  overall-score:
+    description: "Overall reproducibility score from 0 to 100."
+    value: ${{ steps.run.outputs.overall-score }}
+  environment-score:
+    description: "Environment Rebuildability score from 0 to 100."
+    value: ${{ steps.run.outputs.environment-score }}
+  determinism-score:
+    description: "Notebook Determinism score from 0 to 100."
+    value: ${{ steps.run.outputs.determinism-score }}
+  artifact-score:
+    description: "Artifact Availability score from 0 to 100."
+    value: ${{ steps.run.outputs.artifact-score }}
+  portability-score:
+    description: "Portability score from 0 to 100."
+    value: ${{ steps.run.outputs.portability-score }}
+  onboarding-score:
+    description: "Onboarding Readiness score from 0 to 100."
+    value: ${{ steps.run.outputs.onboarding-score }}
+  findings-count:
+    description: "Total number of findings after baseline filtering."
+    value: ${{ steps.run.outputs.findings-count }}
+  high-count:
+    description: "Number of high-severity findings after baseline filtering."
+    value: ${{ steps.run.outputs.high-count }}
+  medium-count:
+    description: "Number of medium-severity findings after baseline filtering."
+    value: ${{ steps.run.outputs.medium-count }}
+  low-count:
+    description: "Number of low-severity findings after baseline filtering."
+    value: ${{ steps.run.outputs.low-count }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: paths
+      shell: bash
+      run: |
+        printf 'report-path=%s\n' "${{ inputs.report-path }}" >> "$GITHUB_OUTPUT"
+        printf 'json-path=%s\n' "${{ inputs.json-path }}" >> "$GITHUB_OUTPUT"
+        printf 'sarif-path=%s\n' "${{ inputs.sarif-path }}" >> "$GITHUB_OUTPUT"
+        printf 'badge-path=%s\n' "${{ inputs.badge-path }}" >> "$GITHUB_OUTPUT"
+        printf 'scorecard-path=%s\n' "${{ inputs.scorecard-path }}" >> "$GITHUB_OUTPUT"
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install labcheck
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install "${{ github.action_path }}"
+
+    - id: run
+      name: Run labcheck
+      shell: bash
+      run: |
+        BASELINE_ARGS=()
+        if [ -n "${{ inputs.baseline-path }}" ]; then
+          BASELINE_ARGS=(--baseline "${{ inputs.baseline-path }}")
+        fi
+        CONFIG_ARGS=()
+        if [ -n "${{ inputs.config-path }}" ]; then
+          CONFIG_ARGS=(--config "${{ inputs.config-path }}")
+        fi
+        MIN_SCORE_ARGS=()
+        if [ -n "${{ inputs.min-score }}" ]; then
+          MIN_SCORE_ARGS=(--min-score "${{ inputs.min-score }}")
+        fi
+        set +e
+        labcheck scan "${{ inputs.target }}" \
+          --format "${{ inputs.report-format }}" \
+          --output "${{ inputs.report-path }}" \
+          --json-output "${{ inputs.json-path }}" \
+          --sarif-output "${{ inputs.sarif-path }}" \
+          --badge-output "${{ inputs.badge-path }}" \
+          --scorecard-output "${{ inputs.scorecard-path }}" \
+          --max-findings "${{ inputs.max-findings }}" \
+          "${CONFIG_ARGS[@]}" \
+          "${BASELINE_ARGS[@]}" \
+          "${MIN_SCORE_ARGS[@]}" \
+          --fail-on "${{ inputs.fail-on }}"
+        LABCHECK_EXIT_CODE=$?
+        set -e
+
+        if [ "${{ inputs.job-summary }}" = "true" ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+          {
+            printf '## labcheck reproducibility audit\n\n'
+            if [ "${{ inputs.report-format }}" = "markdown" ] && [ -f "${{ inputs.report-path }}" ]; then
+              if [ -f "${{ inputs.scorecard-path }}" ]; then
+                cat "${{ inputs.scorecard-path }}"
+                printf '\n\n---\n\n'
+              fi
+              cat "${{ inputs.report-path }}"
+            else
+              printf 'Report written to `%s`.\n\n' "${{ inputs.report-path }}"
+              printf 'Scorecard written to `%s`.\n' "${{ inputs.scorecard-path }}"
+              printf 'JSON report written to `%s`.\n' "${{ inputs.json-path }}"
+              printf 'SARIF report written to `%s`.\n' "${{ inputs.sarif-path }}"
+              printf 'Badge written to `%s`.\n' "${{ inputs.badge-path }}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+        python - "${{ inputs.json-path }}" <<'PY'
+        import json
+        import os
+        import sys
+        from pathlib import Path
+
+        output_path = os.environ.get("GITHUB_OUTPUT")
+        json_path = Path(sys.argv[1])
+        if output_path and json_path.exists():
+            data = json.loads(json_path.read_text(encoding="utf-8"))
+            findings = data.get("findings", [])
+            severity_counts = {"high": 0, "medium": 0, "low": 0}
+            for finding in findings:
+                severity = finding.get("severity")
+                if severity in severity_counts:
+                    severity_counts[severity] += 1
+
+            scores = data.get("scores", {})
+            summary = data.get("summary", {})
+            outputs = {
+                "overall-score": scores.get("overall_score", ""),
+                "environment-score": scores.get("environment_rebuildability", ""),
+                "determinism-score": scores.get("notebook_determinism", ""),
+                "artifact-score": scores.get("artifact_availability", ""),
+                "portability-score": scores.get("portability", ""),
+                "onboarding-score": scores.get("onboarding_readiness", ""),
+                "findings-count": summary.get("findings_count", len(findings)),
+                "high-count": severity_counts["high"],
+                "medium-count": severity_counts["medium"],
+                "low-count": severity_counts["low"],
+            }
+            with open(output_path, "a", encoding="utf-8") as handle:
+                for key, value in outputs.items():
+                    handle.write(f"{key}={value}\n")
+        PY
+
+        exit "$LABCHECK_EXIT_CODE"

@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pytest
+
+      - name: Run tests
+        run: pytest -q
+
+  action-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run local labcheck action
+        id: labcheck
+        uses: ./
+        with:
+          target: "examples/broken-repo"
+          config-path: ".labcheck.toml"
+          report-format: markdown
+          report-path: labcheck-report.md
+          json-path: labcheck-report.json
+          sarif-path: labcheck-report.sarif
+          badge-path: labcheck-badge.svg
+          scorecard-path: labcheck-scorecard.md
+          fail-on: none
+
+      - name: Add smoke-test summary
+        if: always()
+        run: |
+          {
+            echo "## labcheck smoke test"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|---|---:|"
+            echo "| Overall score | ${{ steps.labcheck.outputs.overall-score }} |"
+            echo "| Findings | ${{ steps.labcheck.outputs.findings-count }} |"
+            echo "| High | ${{ steps.labcheck.outputs.high-count }} |"
+            echo "| Medium | ${{ steps.labcheck.outputs.medium-count }} |"
+            echo "| Low | ${{ steps.labcheck.outputs.low-count }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload smoke-test reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: labcheck-smoke-report
+          path: |
+            labcheck-report.md
+            labcheck-report.json
+            labcheck-report.sarif
+            labcheck-badge.svg
+            labcheck-scorecard.md

@@ -1,0 +1,54 @@
+name: Bug report
+description: Report incorrect behavior, crashes, or confusing output.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve labcheck. Please include enough context to reproduce the issue locally.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the incorrect behavior or crash.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can we reproduce it?
+      description: Include commands, target type, and a minimal repo/file shape if possible.
+      placeholder: |
+        labcheck scan examples/broken-repo --format markdown
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - CLI
+        - GitHub Action
+        - Browser demo
+        - Static site export
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, browser if relevant, and labcheck version or commit.
+      placeholder: |
+        OS:
+        Python:
+        Browser:
+        labcheck:

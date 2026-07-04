@@ -1,0 +1,17 @@
+.env
+.env.*
+*.pem
+.pytest_cache/
+__pycache__/
+*.egg-info/
+.coverage
+htmlcov/
+build/
+node_modules/
+.venv/
+venv/
+labcheck-report.*
+labcheck-audit/
+labcheck-audit.zip
+.tmp-*
+dist/

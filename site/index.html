@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>labcheck - No-key reproducibility audits for research and ML repos</title>
+  <meta name="description" content="labcheck is a local-first, no-API-key reproducibility auditor for notebook-heavy research and ML repositories. Scan notebooks, scripts, manifests, README instructions, and simple lineage without a hosted backend.">
+  <meta name="theme-color" content="#0f766e">
+  <meta property="og:title" content="labcheck - No-key reproducibility audits">
+  <meta property="og:description" content="Audit whether research and ML repos can actually be rerun: hidden notebook state, missing artifacts, README drift, unpinned dependencies, and lineage risks.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://github.com/ThomasAquinas14/labcheck">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="labcheck - No-key reproducibility audits">
+  <meta name="twitter:description" content="A local-first reproducibility auditor for research and ML repositories. No paid APIs, no backend secret, no inference bill.">
+  <style>
+    :root {
+      --sand: #f5efe2;
+      --paper: #fffdf8;
+      --ink: #17202a;
+      --muted: #5b6470;
+      --line: #d8cdb9;
+      --teal: #0f766e;
+      --gold: #a16207;
+      --rose: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at top right, rgba(15,118,110,0.08), transparent 30%),
+        radial-gradient(circle at top left, rgba(161,98,7,0.08), transparent 28%),
+        linear-gradient(180deg, #f3ecdf, #fbfaf7);
+    }
+    main { max-width: 1160px; margin: 0 auto; padding: 40px 20px 72px; }
+    .hero, .panel, .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: 0 20px 50px rgba(23,32,42,0.06);
+    }
+    .hero {
+      padding: 36px;
+      display: grid;
+      gap: 24px;
+      grid-template-columns: 1.2fr 0.8fr;
+      align-items: start;
+    }
+    .eyebrow {
+      color: var(--teal);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    h1 {
+      font-size: clamp(36px, 6vw, 68px);
+      line-height: 0.98;
+      margin: 10px 0 14px;
+    }
+    .lede {
+      font-size: 20px;
+      line-height: 1.55;
+      color: var(--muted);
+      max-width: 700px;
+    }
+    .cta-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+    .resource-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 700;
+      border: 1px solid var(--line);
+    }
+    .button.primary {
+      background: var(--teal);
+      color: white;
+      border-color: var(--teal);
+    }
+    .button.secondary {
+      color: var(--ink);
+      background: #f6f0e3;
+    }
+    .button.ghost {
+      color: var(--muted);
+      background: rgba(255,255,255,0.6);
+    }
+    .hero-side {
+      padding: 22px;
+      border: 1px dashed var(--line);
+      border-radius: 20px;
+      background: linear-gradient(180deg, #fcfaf5, #f2ebdd);
+    }
+    .score {
+      font-size: 62px;
+      line-height: 1;
+      color: var(--teal);
+      font-weight: 700;
+      margin: 12px 0 8px;
+    }
+    .meta {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .meta span {
+      display: inline-block;
+      background: rgba(255,255,255,0.75);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+    .section-title {
+      margin: 42px 0 16px;
+      font-size: 28px;
+    }
+    .grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+    .card, .panel { padding: 24px; }
+    .card h3, .panel h3 { margin-top: 0; }
+    .check {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+    .tag {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #efe7d7;
+    }
+    .tag.high { color: var(--rose); background: #fee2e2; }
+    .tag.medium { color: var(--gold); background: #fef3c7; }
+    .code {
+      font-family: Consolas, monospace;
+      font-size: 14px;
+      background: #f8f4ec;
+      border: 1px solid var(--line);
+      padding: 14px;
+      border-radius: 16px;
+      overflow: auto;
+    }
+    .audit-links {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .small {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .quick-path {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      margin-top: 18px;
+    }
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .quick-path { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Open-source reproducibility auditor</div>
+        <h1>Find the hidden reasons research repos fail to rerun.</h1>
+        <p class="lede">
+          <strong>labcheck</strong> audits notebooks, scripts, manifests, README instructions, and simple data lineage to tell you whether a repo is actually reproducible for the next student, reviewer, or engineer.
+        </p>
+        <p class="small">
+          It already works on local folders, notebooks, local zip archives, and public GitHub repo URLs.
+        </p>
+        <div class="cta-row">
+          <a class="button primary" href="./demo.html">Try browser demo</a>
+          <a class="button secondary" href="../docs/sample-audits/broken-repo-audit.html">Open sample HTML audit</a>
+          <a class="button secondary" href="../README.md">Read the README</a>
+        </div>
+        <div class="resource-row">
+          <a class="button ghost" href="../docs/sample-audits/broken-repo-audit.md">Markdown audit</a>
+          <a class="button secondary" href="../docs/sample-audits/broken-repo-scorecard.md">Open sample scorecard</a>
+          <a class="button ghost" href="../docs/case-studies.md">Case studies</a>
+          <a class="button ghost" href="../docs/github-action.md">GitHub Action</a>
+          <a class="button ghost" href="../docs/launch-kit.md">Launch kit</a>
+          <a class="button ghost" href="../docs/outreach-playbook.md">Outreach playbook</a>
+          <a class="button ghost" href="../docs/public-deploy-guide.md">Deploy guide</a>
+          <a class="button ghost" href="../CITATION.cff">Citation</a>
+        </div>
+      </div>
+      <aside class="hero-side">
+        <div class="eyebrow">Current sample</div>
+        <div class="score">44</div>
+        <p class="small">The intentionally broken demo repo scores poorly because it combines hidden notebook state, a saved traceback, missing artifacts, README drift, missing runtime metadata, and unseeded randomness.</p>
+        <div class="meta">
+          <span>4 high-severity findings</span>
+          <span>6 medium-severity findings</span>
+          <span>Prioritized remediation plan</span>
+          <span>Inline SVG provenance graph</span>
+          <span>No API keys required</span>
+        </div>
+      </aside>
+    </section>
+
+    <section class="quick-path">
+      <article class="panel">
+        <div class="eyebrow">30-second path</div>
+        <h2 style="margin-top: 10px;">See the value before installing anything.</h2>
+        <p class="small">
+          Load the browser demo sample repo, then open the sample HTML audit. That shows the full loop: scorecard, top risks, provenance, and concrete fixes without a backend or API key.
+        </p>
+        <div class="audit-links">
+          <a class="button primary" href="./demo.html">Open browser demo</a>
+          <a class="button secondary" href="../docs/sample-audits/broken-repo-audit.html">Open sample audit</a>
+        </div>
+      </article>
+      <article class="panel">
+        <div class="eyebrow">Install path</div>
+        <h2 style="margin-top: 10px;">Run it on a repo in four commands.</h2>
+        <div class="code">git clone https://github.com/ThomasAquinas14/labcheck.git
+cd labcheck
+python -m pip install -e .
+labcheck scorecard examples/broken-repo</div>
+        <p class="small">
+          For a shareable bundle, run <code>labcheck pack . --output-dir labcheck-audit --zip</code>.
+        </p>
+      </article>
+    </section>
+
+    <h2 class="section-title">What it catches</h2>
+    <section class="grid">
+      <article class="card">
+        <div class="tag high">High signal</div>
+        <h3>Hidden notebook state</h3>
+        <p class="small">Detects cells that reference names with no visible prior definition, a classic sign that the notebook only works in the original author's live kernel.</p>
+      </article>
+      <article class="card">
+        <div class="tag high">High signal</div>
+        <h3>Saved notebook errors</h3>
+        <p class="small">Flags notebooks committed with traceback/error outputs, which is strong evidence they were not saved after a clean rerun.</p>
+      </article>
+      <article class="card">
+        <div class="tag high">High signal</div>
+        <h3>Missing input artifacts</h3>
+        <p class="small">Flags datasets and files that the code reads but the repo never actually includes.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Provenance gap</div>
+        <h3>Orphan generated outputs</h3>
+        <p class="small">Flags committed files under `outputs/`, `results/`, `figures/`, and similar folders when no scanned notebook or script visibly writes them.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Contributor pain</div>
+        <h3>Loose environment manifests</h3>
+        <p class="small">Checks `requirements.txt`, `pyproject.toml`, and Conda environment files for dependencies that can drift between machines.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">ML reproducibility</div>
+        <h3>Seedless sklearn splits</h3>
+        <p class="small">Flags common scikit-learn splitters and randomized estimators when they omit <code>random_state</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Notebook drift</div>
+        <h3>Seedless pandas samples</h3>
+        <p class="small">Flags pandas <code>sample()</code> calls that can select different rows unless <code>random_state</code> is documented.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Contributor pain</div>
+        <h3>README drift</h3>
+        <p class="small">Finds documented commands that point to files that no longer exist, which is one of the fastest ways to lose trust with new users.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Workflow clarity</div>
+        <h3>Disconnected analysis files</h3>
+        <p class="small">Surfaces workflow nodes that are not visibly connected to any inputs or outputs, making them hard to place in the real experiment pipeline.</p>
+      </article>
+    </section>
+
+    <h2 class="section-title">Not just findings. A fix order.</h2>
+    <section class="panel">
+      <p class="small">
+        Every Markdown and HTML audit now includes a remediation plan that sorts the highest-impact issues first, explains the first evidence, and carries forward the suggested fix. That makes a report easier to send to a lab, founder, or maintainer without asking them to reverse-engineer the priority list.
+      </p>
+    </section>
+
+    <h2 class="section-title">Readable on large repos</h2>
+    <section class="panel">
+      <p class="small">
+        Large notebook corpora can produce hundreds of repeated findings. Human-readable reports show the first 100 detailed findings by default, include a clear truncation note, and keep JSON/SARIF complete for automation. Use <code>--max-findings all</code> when you need every detail.
+      </p>
+    </section>
+
+    <h2 class="section-title">Why this is public-hosting safe</h2>
+    <section class="panel">
+      <p class="small">
+        Most of your strongest projects rely on paid APIs, which makes public deployment risky. <strong>labcheck</strong> was chosen to invert that constraint:
+      </p>
+      <div class="code">- deterministic checks
+- local-first CLI
+- static sample audits
+- no LLM runtime dependency
+- no wallet-drain surface
+- easy to host on GitHub Pages / Netlify / Oracle static hosting</div>
+    </section>
+
+    <h2 class="section-title">Try the browser demo</h2>
+    <section class="panel">
+      <p class="small">
+        The static demo page can quick-scan a single notebook or a small set of local repo files entirely in the browser. No upload, no backend, no inference key, no bill.
+      </p>
+      <p class="small">
+        It includes a visual lineage panel, rough manifest/README/file-presence checks, and downloadable scorecard/Markdown/JSON results, so the browser demo is useful for sharing as well as exploration.
+      </p>
+      <p class="small">
+        The demo includes a one-click sample repo snapshot, so a visitor can see multi-file findings immediately without preparing an upload.
+      </p>
+      <div class="audit-links">
+        <a class="button primary" href="./demo.html">Open browser local-file demo</a>
+      </div>
+    </section>
+
+    <h2 class="section-title">Example sample findings</h2>
+    <section class="grid">
+      <article class="card">
+        <div class="tag high">LC002</div>
+        <h3>Likely hidden notebook state</h3>
+        <p class="small"><strong>Evidence:</strong> Cell 3 references <code>external_state</code> with no visible prior definition.</p>
+      </article>
+      <article class="card">
+        <div class="tag high">LC005</div>
+        <h3>Missing artifact</h3>
+        <p class="small"><strong>Evidence:</strong> The notebook reads <code>data/train.csv</code>, but the file is not present in the repo.</p>
+      </article>
+      <article class="card">
+        <div class="tag high">LC011</div>
+        <h3>Saved traceback</h3>
+        <p class="small"><strong>Evidence:</strong> The notebook is committed with a <code>NameError</code> output from a failed cell.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC009</div>
+        <h3>Orphan output</h3>
+        <p class="small"><strong>Evidence:</strong> A committed result file exists under an output-like folder, but no scanned notebook or script visibly writes it.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC008</div>
+        <h3>README drift</h3>
+        <p class="small"><strong>Evidence:</strong> <code>python scripts/train.py</code> is documented, but the referenced file is missing.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC012</div>
+        <h3>Missing runtime</h3>
+        <p class="small"><strong>Evidence:</strong> Runnable notebooks or scripts exist, but no Python version is declared.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC016</div>
+        <h3>Sklearn random_state gap</h3>
+        <p class="small"><strong>Evidence:</strong> A train/test split or randomized estimator runs without a documented <code>random_state</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC017</div>
+        <h3>Pandas sample drift</h3>
+        <p class="small"><strong>Evidence:</strong> A pandas <code>sample()</code> call runs without a documented <code>random_state</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC013</div>
+        <h3>Missing quickstart</h3>
+        <p class="small"><strong>Evidence:</strong> Runnable code exists, but the README does not show a clear setup or run command.</p>
+      </article>
+      <article class="card">
+        <div class="tag low">LC014</div>
+        <h3>No execution evidence</h3>
+        <p class="small"><strong>Evidence:</strong> A multi-cell notebook has empty execution counts throughout.</p>
+      </article>
+    </section>
+
+    <h2 class="section-title">Use it in CI</h2>
+    <section class="panel">
+      <p class="small">
+        The GitHub Action runs the same deterministic audit without secrets, writes a compact scorecard plus the Markdown report into the job summary, emits SARIF for GitHub code-scanning integrations, exposes score outputs for PR summaries or sticky comments, and can produce a static SVG score badge. Start with a soft report artifact, then commit a baseline and turn on <code>fail-on: high</code> when the repo is ready for a reproducibility gate.
+      </p>
+      <div class="code">labcheck init .
+labcheck init . --policy
+
+- uses: actions/checkout@v4
+- uses: ThomasAquinas14/labcheck@v1
+  with:
+    target: "."
+    config-path: .labcheck.toml
+    baseline-path: .labcheck-baseline.json
+    report-path: labcheck-report.md
+    json-path: labcheck-report.json
+    sarif-path: labcheck-report.sarif
+    badge-path: labcheck-badge.svg
+    scorecard-path: labcheck-scorecard.md
+    max-findings: "100"
+    fail-on: high
+    min-score: "80"</div>
+      <div class="audit-links">
+        <a class="button primary" href="../docs/github-action.md">Open GitHub Action guide</a>
+      </div>
+    </section>
+
+    <h2 class="section-title">Self-explaining checks</h2>
+    <section class="panel">
+      <p class="small">
+        The CLI includes a built-in check catalog, so someone who receives a report can run <code>labcheck explain LC005</code> and immediately see what the finding means, why it matters, and what to fix.
+      </p>
+      <div class="code">labcheck checks
+labcheck explain LC005</div>
+    </section>
+
+    <h2 class="section-title">Adoption pack for labs and teams</h2>
+    <section class="panel">
+      <p class="small">
+        <code>labcheck init --policy</code> creates a ready-to-edit <code>docs/reproducibility.md</code> handoff policy covering notebook reruns, input artifacts, generated outputs, dependency pinning, runtime metadata, and review expectations.
+      </p>
+      <div class="audit-links">
+        <a class="button primary" href="../docs/lab-adoption-guide.md">Open adoption guide</a>
+      </div>
+    </section>
+
+    <h2 class="section-title">Public repo case studies</h2>
+    <section class="grid">
+      <article class="card">
+        <div class="tag medium">Public scan</div>
+        <h3>ageron/handson-ml3</h3>
+        <p class="small">A notebook-heavy ML repo that highlights hidden-state assumptions, portability issues, and visible lineage edges.</p>
+        <div class="audit-links">
+          <a class="button secondary" href="../docs/sample-audits/handson-ml3-audit.md">Open audit</a>
+        </div>
+      </article>
+      <article class="card">
+        <div class="tag medium">Stress test</div>
+        <h3>jakevdp/PythonDataScienceHandbook</h3>
+        <p class="small">A larger educational notebook corpus that currently acts as a strong scale and noise-control stress test for the engine.</p>
+        <div class="audit-links">
+          <a class="button secondary" href="../docs/sample-audits/python-data-science-handbook-audit.md">Open audit</a>
+        </div>
+      </article>
+    </section>
+
+    <h2 class="section-title">Use it for outreach</h2>
+    <section class="panel">
+      <p class="small">
+        `labcheck` is meant to be easy to share with professors, lab managers, and ML/data founders. Use <code>labcheck scorecard</code> for a one-screen summary, then <code>labcheck pack --zip</code> to generate a complete audit folder and a single archive when someone wants machine-readable artifacts too.
+      </p>
+      <div class="code">labcheck scorecard https://github.com/owner/repo --output labcheck-scorecard.md
+labcheck pack https://github.com/owner/repo --output-dir labcheck-audit --zip</div>
+      <div class="audit-links">
+        <a class="button primary" href="../docs/outreach-playbook.md">Open outreach playbook</a>
+        <a class="button secondary" href="../docs/launch-kit.md">Open launch kit</a>
+      </div>
+    </section>
+
+    <h2 class="section-title">Deploy it safely</h2>
+    <section class="panel">
+      <p class="small">
+        The project was designed so you can host the public-facing experience as static files and keep the heavier scans local-first. Build a self-contained public package with <code>python scripts/build_static_site.py</code>, then publish <code>dist/site</code> to GitHub Pages, Netlify, Cloudflare Pages, or Oracle Object Storage.
+      </p>
+      <div class="audit-links">
+        <a class="button primary" href="../docs/public-deploy-guide.md">Open public deploy guide</a>
+      </div>
+    </section>
+
+    <h2 class="section-title">Try it</h2>
+    <section class="panel">
+      <div class="code">git clone https://github.com/ThomasAquinas14/labcheck.git
+cd labcheck
+python -m pip install -e .
+
+labcheck scan examples/broken-repo --format html --output report.html
+labcheck scorecard examples/broken-repo
+labcheck pack examples/broken-repo --output-dir labcheck-audit --zip
+labcheck scan https://github.com/owner/repo --format markdown --max-findings 50
+labcheck init .
+labcheck scan examples/broken-repo.zip
+labcheck scan https://github.com/owner/repo
+labcheck graph examples/broken-repo
+labcheck checks
+labcheck explain LC005
+python scripts/build_static_site.py</div>
+      <div class="audit-links">
+        <a class="button primary" href="../docs/sample-audits/broken-repo-audit.html">View sample HTML audit</a>
+        <a class="button secondary" href="../docs/sample-audits/broken-repo-audit.md">View sample Markdown audit</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

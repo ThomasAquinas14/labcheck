@@ -1,0 +1,1514 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>labcheck browser demo - local reproducibility triage</title>
+  <meta name="description" content="Try a no-upload browser demo of labcheck. Quick-scan notebooks or selected repo files locally for reproducibility risks without an API key or backend.">
+  <meta name="theme-color" content="#0f766e">
+  <meta property="og:title" content="labcheck browser demo">
+  <meta property="og:description" content="Quick-scan notebooks or local repo files in the browser for reproducibility risks. Everything stays local.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="labcheck browser demo">
+  <meta name="twitter:description" content="No-upload, no-key reproducibility triage for notebooks and selected repo files.">
+  <style>
+    :root {
+      --sand: #f5efe2;
+      --paper: #fffdf8;
+      --ink: #17202a;
+      --muted: #5b6470;
+      --line: #d8cdb9;
+      --teal: #0f766e;
+      --gold: #a16207;
+      --rose: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at top right, rgba(15,118,110,0.08), transparent 30%),
+        radial-gradient(circle at top left, rgba(161,98,7,0.08), transparent 28%),
+        linear-gradient(180deg, #f3ecdf, #fbfaf7);
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
+    .hero, .panel, .finding, .score-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: 0 20px 50px rgba(23,32,42,0.06);
+    }
+    .hero, .panel { padding: 28px; }
+    .hero { display: grid; gap: 18px; grid-template-columns: 1.1fr 0.9fr; align-items: start; }
+    .eyebrow { color: var(--teal); text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px; font-weight: 700; }
+    h1 { font-size: clamp(32px, 5vw, 60px); line-height: 0.98; margin: 10px 0 14px; }
+    .lede, .small { color: var(--muted); line-height: 1.6; }
+    .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 700;
+      border: 1px solid var(--line);
+      background: #f6f0e3;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .button.primary { background: var(--teal); border-color: var(--teal); color: white; }
+    .dropzone {
+      border: 2px dashed var(--line);
+      border-radius: 22px;
+      padding: 28px;
+      background: linear-gradient(180deg, #fcfaf5, #f2ebdd);
+      text-align: center;
+    }
+    .dropzone.dragover { border-color: var(--teal); background: linear-gradient(180deg, #eff9f7, #f2ebdd); }
+    .dropzone input { display: none; }
+    .drop-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 18px; }
+    .score-card { padding: 18px; }
+    .score { font-size: 34px; font-weight: 700; color: var(--teal); }
+    .score-title { font-weight: 700; margin-top: 8px; }
+    .summary { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+    .summary span { background: #efe7d7; border-radius: 999px; padding: 8px 12px; font-size: 14px; }
+    .finding-list { display: grid; gap: 14px; margin-top: 18px; }
+    .finding { padding: 18px; }
+    .finding-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .badge { border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; background: #efe7d7; }
+    .severity-high .badge { background: #fee2e2; color: var(--rose); }
+    .severity-medium .badge { background: #fef3c7; color: var(--gold); }
+    .code { font-family: Consolas, monospace; background: #f8f4ec; border: 1px solid var(--line); border-radius: 16px; padding: 14px; overflow: auto; }
+    .graph-shell { background: linear-gradient(180deg, #fcfaf5, #f3ecdf); border: 1px solid var(--line); border-radius: 18px; padding: 14px; overflow: auto; }
+    .result-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+    .action-status { margin: 10px 0 0; min-height: 1.5em; }
+    .hidden { display: none; }
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Static browser audit</div>
+        <h1>Drop a notebook or small repo snapshot. Get instant reproducibility triage.</h1>
+        <p class="lede">
+          This demo runs entirely in your browser. It does not upload your files anywhere, and it does not use any API keys.
+        </p>
+        <p class="small">
+          It focuses on a high-signal subset of `labcheck`: notebook hidden state, saved notebook errors, dependency manifests, missing local inputs, README drift, machine-local paths, randomness without visible seeding, sklearn/pandas random_state gaps, and simple read/write lineage.
+        </p>
+        <div class="cta-row">
+          <a class="button" href="./index.html">Back to landing page</a>
+          <button id="load-sample-repo" class="button primary" type="button">Load sample repo snapshot</button>
+          <button id="load-sample" class="button" type="button">Load sample notebook</button>
+        </div>
+      </div>
+      <div class="dropzone" id="dropzone">
+        <p><strong>Drag and drop a notebook, Python file, or small group of repo files here</strong></p>
+        <p class="small">or choose files/folders from your machine. Everything stays local in this browser tab.</p>
+        <div class="drop-actions">
+          <button id="choose-files" class="button primary" type="button">Choose files</button>
+          <button id="choose-folder" class="button" type="button">Choose folder</button>
+        </div>
+        <input id="file-input" type="file" multiple accept=".ipynb,.py,.md,.txt,.toml,.yml,.yaml,.json,.csv,.tsv">
+        <input id="folder-input" type="file" multiple webkitdirectory>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="results">
+      <div class="eyebrow">Notebook report</div>
+      <h2 id="report-title">Notebook quick scan</h2>
+      <div class="summary" id="summary"></div>
+      <div class="result-actions">
+        <button id="copy-scorecard" class="button primary" type="button">Copy Scorecard</button>
+        <button id="download-scorecard" class="button primary" type="button">Download Scorecard</button>
+        <button id="download-markdown" class="button" type="button">Download Markdown</button>
+        <button id="download-json" class="button" type="button">Download JSON</button>
+      </div>
+      <p id="scorecard-status" class="small action-status" aria-live="polite"></p>
+      <div class="grid" id="score-grid"></div>
+      <div class="panel" style="margin-top: 18px;">
+        <h3 style="margin-top: 0;">Top risks</h3>
+        <div class="finding-list" id="top-risks"></div>
+      </div>
+      <div class="panel" style="margin-top: 18px;">
+        <h3 style="margin-top: 0;">Visual lineage</h3>
+        <div class="graph-shell" id="graph-shell"></div>
+      </div>
+      <div class="panel" style="margin-top: 18px;">
+        <h3 style="margin-top: 0;">Lightweight lineage</h3>
+        <div class="code" id="lineage"></div>
+      </div>
+      <div class="finding-list" id="findings"></div>
+    </section>
+  </main>
+
+  <script>
+    const sampleNotebook = {
+      cells: [
+        {
+          cell_type: "code",
+          execution_count: 1,
+          outputs: [],
+          source: [
+            "import pandas as pd\n",
+            "import numpy as np\n",
+            "data_path = \"C:\\\\Users\\\\researcher\\\\Desktop\\\\data.csv\"\n",
+            "missing_path = \"data/train.csv\""
+          ]
+        },
+        {
+          cell_type: "code",
+          execution_count: 5,
+          outputs: [],
+          source: [
+            "df = pd.read_csv(missing_path)\n",
+            "sample = np.random.rand(3)\n",
+            "df.to_csv('outputs/report.csv')\n",
+            "df.head()"
+          ]
+        },
+        {
+          cell_type: "code",
+          execution_count: 3,
+          outputs: [
+            {
+              output_type: "error",
+              ename: "NameError",
+              evalue: "name 'external_state' is not defined",
+              traceback: ["NameError: name 'external_state' is not defined"]
+            }
+          ],
+          source: [
+            "print(external_state)\n",
+            "print(df.shape)"
+          ]
+        }
+      ]
+    };
+
+    const sampleRepoFiles = [
+      {
+        path: "demo-lab/README.md",
+        name: "README.md",
+        text: "Run the training script:\n\n```bash\npython scripts/train.py\n```\n\nExpected input: `data/train.csv`.\n"
+      },
+      {
+        path: "demo-lab/notebooks/analysis.ipynb",
+        name: "analysis.ipynb",
+        text: JSON.stringify(sampleNotebook)
+      },
+      {
+        path: "demo-lab/experiment.py",
+        name: "experiment.py",
+        text: [
+          "import pandas as pd\n",
+          "import numpy as np\n",
+          "from sklearn.model_selection import train_test_split\n",
+          "source = 'data/train.csv'\n",
+          "df = pd.read_csv(source)\n",
+          "train, test = train_test_split(df, test_size=0.2)\n",
+          "subset = df.sample(frac=0.5)\n",
+          "score = np.random.rand()\n",
+          "df.to_csv('outputs/report.csv')\n"
+        ].join("")
+      },
+      {
+        path: "demo-lab/requirements.txt",
+        name: "requirements.txt",
+        text: "pandas\nnumpy==2.0.0\nscikit-learn==1.5.0\n"
+      }
+    ].map(file => ({ ...file, size: file.text.length, textLike: true }));
+
+    const builtinNames = new Set([
+      "abs","all","any","bool","dict","enumerate","filter","float","int","len","list","map","max","min","open","print",
+      "range","set","sorted","str","sum","tuple","zip","True","False","None"
+    ]);
+
+    const dropzone = document.getElementById("dropzone");
+    const fileInput = document.getElementById("file-input");
+    const folderInput = document.getElementById("folder-input");
+    const chooseFilesButton = document.getElementById("choose-files");
+    const chooseFolderButton = document.getElementById("choose-folder");
+    const loadSampleButton = document.getElementById("load-sample");
+    const loadSampleRepoButton = document.getElementById("load-sample-repo");
+    const results = document.getElementById("results");
+    const reportTitle = document.getElementById("report-title");
+    const summary = document.getElementById("summary");
+    const scoreGrid = document.getElementById("score-grid");
+    const topRisksList = document.getElementById("top-risks");
+    const findingsList = document.getElementById("findings");
+    const lineage = document.getElementById("lineage");
+    const graphShell = document.getElementById("graph-shell");
+    const copyScorecardButton = document.getElementById("copy-scorecard");
+    const downloadScorecardButton = document.getElementById("download-scorecard");
+    const downloadMarkdownButton = document.getElementById("download-markdown");
+    const downloadJsonButton = document.getElementById("download-json");
+    const scorecardStatus = document.getElementById("scorecard-status");
+    let lastReport = null;
+
+    const readLiteralPatterns = [
+      /pd\.read_(?:csv|parquet|json|excel)\(\s*['"]([^'"]+)['"]/g,
+      /open\(\s*['"]([^'"]+)['"]\s*(?:,\s*['"]r['"])?/g,
+      /np\.load\(\s*['"]([^'"]+)['"]/g,
+      /torch\.load\(\s*['"]([^'"]+)['"]/g,
+    ];
+
+    const writeLiteralPatterns = [
+      /to_(?:csv|parquet|json|excel)\(\s*['"]([^'"]+)['"]/g,
+      /savefig\(\s*['"]([^'"]+)['"]/g,
+      /open\(\s*['"]([^'"]+)['"]\s*,\s*['"](?:w|wb|a)['"]/g,
+    ];
+
+    function extractCodeCells(notebook) {
+      return (notebook.cells || []).filter(cell => cell.cell_type === "code").map(cell => {
+        const source = Array.isArray(cell.source) ? cell.source.join("") : String(cell.source || "");
+        return { executionCount: cell.execution_count, source, outputs: Array.isArray(cell.outputs) ? cell.outputs : [] };
+      });
+    }
+
+    function notebookMetadataIssue(notebook) {
+      const metadata = notebook && typeof notebook.metadata === "object" && notebook.metadata ? notebook.metadata : {};
+      const kernelspec = metadata.kernelspec && typeof metadata.kernelspec === "object" ? metadata.kernelspec : {};
+      const languageInfo = metadata.language_info && typeof metadata.language_info === "object" ? metadata.language_info : {};
+      const missing = [];
+      if (!String(kernelspec.name || "").trim()) missing.push("kernelspec.name");
+      if (!String(languageInfo.name || "").trim()) missing.push("language_info.name");
+      return missing.length ? `Notebook metadata is missing ${missing.join(" and ")}.` : "";
+    }
+
+    function nonMonotonicExecution(cells) {
+      const counts = cells.map(cell => cell.executionCount).filter(count => count !== null && count !== undefined);
+      if (counts.length < 3) return null;
+      for (let i = 1; i < counts.length; i += 1) {
+        if (!(counts[i] > counts[i - 1])) {
+          return counts;
+        }
+      }
+      return null;
+    }
+
+    function extractAssignments(source) {
+      const assignments = {};
+      const regex = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*['"]([^'"]+)['"]/gm;
+      for (const match of source.matchAll(regex)) {
+        assignments[match[1]] = match[2];
+      }
+      return assignments;
+    }
+
+    function extractPaths(source, literalPatterns) {
+      const paths = [];
+      for (const pattern of literalPatterns) {
+        for (const match of source.matchAll(pattern)) {
+          paths.push(match[1]);
+        }
+      }
+      return paths;
+    }
+
+    function extractVariablePaths(source, assignments, variableRegexes) {
+      const paths = [];
+      for (const regex of variableRegexes) {
+        for (const match of source.matchAll(regex)) {
+          const name = match[1];
+          if (assignments[name]) paths.push(assignments[name]);
+        }
+      }
+      return paths;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function normalizeRepoPath(path) {
+      return String(path || "")
+        .replaceAll("\\", "/")
+        .replace(/^\/+/, "")
+        .replace(/^\.\//, "")
+        .split("/")
+        .filter(part => part && part !== ".")
+        .join("/");
+    }
+
+    function dirname(path) {
+      const normalized = normalizeRepoPath(path);
+      const index = normalized.lastIndexOf("/");
+      return index === -1 ? "" : normalized.slice(0, index);
+    }
+
+    function joinRepoPath(base, relative) {
+      const parts = [];
+      `${base ? `${base}/` : ""}${relative}`.replaceAll("\\", "/").split("/").forEach(part => {
+        if (!part || part === ".") return;
+        if (part === "..") {
+          parts.pop();
+          return;
+        }
+        parts.push(part);
+      });
+      return parts.join("/");
+    }
+
+    function isExternalOrPlaceholder(path) {
+      const normalized = String(path || "").trim().toLowerCase();
+      return !normalized
+        || normalized.includes("://")
+        || normalized.startsWith("s3://")
+        || normalized.startsWith("gs://")
+        || normalized.startsWith("path/to/")
+        || normalized.startsWith("<");
+    }
+
+    function repoHasPath(repoPaths, sourcePath, candidate) {
+      if (!repoPaths || isExternalOrPlaceholder(candidate)) return true;
+      const normalized = normalizeRepoPath(candidate);
+      if (!normalized || normalized.includes("..") || /^[a-z]:/i.test(normalized)) return false;
+      return repoPaths.has(normalized) || repoPaths.has(joinRepoPath(dirname(sourcePath), normalized));
+    }
+
+    function finding({ id, severity, title, file, evidence, why, fix }) {
+      return { id, severity, title, file: file || ".", evidence, why, fix };
+    }
+
+    function severityCounts(findings) {
+      return {
+        high: findings.filter(f => f.severity === "high").length,
+        medium: findings.filter(f => f.severity === "medium").length,
+        low: findings.filter(f => f.severity === "low").length,
+      };
+    }
+
+    function sklearnRandomStateIssues(source) {
+      const issues = [];
+      const directNames = [
+        "AdaBoostClassifier",
+        "AdaBoostRegressor",
+        "BaggingClassifier",
+        "BaggingRegressor",
+        "ExtraTreesClassifier",
+        "ExtraTreesRegressor",
+        "GaussianMixture",
+        "GradientBoostingClassifier",
+        "GradientBoostingRegressor",
+        "HistGradientBoostingClassifier",
+        "HistGradientBoostingRegressor",
+        "IsolationForest",
+        "KMeans",
+        "MLPClassifier",
+        "MLPRegressor",
+        "MiniBatchKMeans",
+        "RandomForestClassifier",
+        "RandomForestRegressor",
+        "RandomizedSearchCV",
+        "SGDClassifier",
+        "SGDRegressor",
+        "SpectralClustering",
+        "TSNE",
+        "train_test_split"
+      ];
+      const shuffledSplitters = ["GroupShuffleSplit", "ShuffleSplit", "StratifiedShuffleSplit"];
+      const optionalShuffleSplitters = ["KFold", "StratifiedKFold"];
+      const inspectCalls = (name, requireShuffle) => {
+        const regex = new RegExp(`\\b${name}\\s*\\(([^)]*)\\)`, "gs");
+        let match;
+        while ((match = regex.exec(source)) !== null) {
+          const args = match[1] || "";
+          if (/random_state\s*=/.test(args)) continue;
+          if (requireShuffle && !/shuffle\s*=\s*(?:True|true)/.test(args)) continue;
+          const line = source.slice(0, match.index).split(/\r?\n/).length;
+          issues.push(`line ${line}: ${name}(...)`);
+        }
+      };
+      directNames.forEach(name => inspectCalls(name, false));
+      shuffledSplitters.forEach(name => inspectCalls(name, false));
+      optionalShuffleSplitters.forEach(name => inspectCalls(name, true));
+      return issues;
+    }
+
+    function pandasRandomStateIssues(source) {
+      if (!/\b(?:import\s+pandas|from\s+pandas\s+import|pd\.|pandas\.)/.test(source)) {
+        return [];
+      }
+      const issues = [];
+      const regex = /\.sample\s*\(([^)]*)\)/gs;
+      let match;
+      while ((match = regex.exec(source)) !== null) {
+        const args = match[1] || "";
+        if (/random_state\s*=/.test(args)) continue;
+        const line = source.slice(0, match.index).split(/\r?\n/).length;
+        issues.push(`line ${line}: sample(...)`);
+      }
+      return issues;
+    }
+
+    function scoreFindings(findings) {
+      const penalty = {
+        environment: findings.filter(f => ["LC003", "LC004", "LC012", "LC015"].includes(f.id)).length * 22,
+        determinism: findings.filter(f => ["LC001", "LC002", "LC007", "LC011", "LC014", "LC016", "LC017"].includes(f.id)).length * 28,
+        artifacts: findings.filter(f => ["LC005", "LC009"].includes(f.id)).length * 24,
+        portability: findings.filter(f => f.id === "LC006").length * 20,
+        onboarding: findings.filter(f => ["LC008", "LC010", "LC013"].includes(f.id)).length * 18,
+      };
+      const scores = {
+        environment: Math.max(0, 100 - penalty.environment),
+        determinism: Math.max(0, 100 - penalty.determinism),
+        artifacts: Math.max(0, 100 - penalty.artifacts),
+        portability: Math.max(0, 100 - penalty.portability),
+        onboarding: Math.max(0, 100 - penalty.onboarding),
+      };
+      const scoreValues = Object.values(scores);
+      const averageScore = scoreValues.reduce((sum, score) => sum + score, 0) / scoreValues.length;
+      return { scores, overall: Math.round(averageScore * 0.7 + Math.min(...scoreValues) * 0.3) };
+    }
+
+    function hiddenStateIssues(cells) {
+      const known = new Set(builtinNames);
+      const issues = [];
+      const assignmentRegex = /\b([A-Za-z_][A-Za-z0-9_]*)\s*=/g;
+      const importRegex = /^\s*(?:from\s+[A-Za-z0-9_\.]+\s+import\s+([A-Za-z0-9_,\s]+)|import\s+([A-Za-z0-9_\.]+))/gm;
+      const tokenRegex = /\b([A-Za-z_][A-Za-z0-9_]*)\b/g;
+
+      cells.forEach((cell, index) => {
+        const assigned = new Set();
+        for (const match of cell.source.matchAll(assignmentRegex)) {
+          assigned.add(match[1]);
+        }
+        for (const match of cell.source.matchAll(importRegex)) {
+          if (match[1]) {
+            match[1].split(",").map(part => part.trim().split(" as ")[0]).forEach(name => assigned.add(name));
+          } else if (match[2]) {
+            assigned.add(match[2].split(".")[0]);
+          }
+        }
+
+        const missing = new Set();
+        for (const match of cell.source.matchAll(tokenRegex)) {
+          const token = match[1];
+          if (known.has(token) || assigned.has(token)) continue;
+          if (["import", "from", "as", "for", "in", "if", "else", "return", "class", "def", "with"].includes(token)) continue;
+          missing.add(token);
+        }
+        if (missing.size > 0) {
+          issues.push({ cellIndex: index + 1, names: Array.from(missing).slice(0, 6) });
+        }
+        assigned.forEach(name => known.add(name));
+      });
+
+      return issues;
+    }
+
+    function analyzeNotebook(notebook, label, context = {}) {
+      const cells = extractCodeCells(notebook);
+      const findings = [];
+      const executionIssue = nonMonotonicExecution(cells);
+      if (executionIssue) {
+        findings.push(finding({
+          id: "LC001",
+          severity: "high",
+          title: "Suspicious notebook execution order",
+          file: label,
+          evidence: `Execution counts are non-monotonic: [${executionIssue.join(", ")}]`,
+          why: "The notebook may rely on hidden runtime state rather than a clean top-to-bottom execution path.",
+          fix: "Restart the kernel and run all cells before saving."
+        }));
+      }
+
+      if (cells.length >= 2 && cells.every(cell => cell.executionCount === null || cell.executionCount === undefined)) {
+        findings.push(finding({
+          id: "LC014",
+          severity: "low",
+          title: "Notebook has no saved execution evidence",
+          file: label,
+          evidence: `All ${cells.length} code cells have empty execution counts.`,
+          why: "A cleared notebook may be intentional, but it gives reviewers no saved evidence that the notebook was rerun from a clean kernel.",
+          fix: "If outputs are intentionally stripped, document the rerun command or CI check; otherwise restart the kernel, run all cells, and save the notebook."
+        }));
+      }
+
+      const metadataIssue = notebookMetadataIssue(notebook);
+      if (metadataIssue) {
+        findings.push(finding({
+          id: "LC015",
+          severity: "low",
+          title: "Notebook is missing kernel metadata",
+          file: label,
+          evidence: metadataIssue,
+          why: "A notebook handoff is harder when reviewers cannot tell which kernel and language the author intended.",
+          fix: "Open the notebook with the intended kernel and save it, or add kernelspec and language_info metadata before sharing."
+        }));
+      }
+
+      const hiddenIssues = hiddenStateIssues(cells);
+      if (hiddenIssues.length) {
+        const examples = hiddenIssues.slice(0, 3).map(issue => `cell ${issue.cellIndex}: ${issue.names.join(", ")}`).join("; ");
+        findings.push(finding({
+          id: "LC002",
+          severity: "high",
+          title: "Likely hidden notebook state",
+          file: label,
+          evidence: `${hiddenIssues.length} cells reference names with no visible prior definition; examples: ${examples}`,
+          why: "The notebook may only work in the original author's live kernel rather than from a clean rerun.",
+          fix: "Make setup cells explicit and ensure the notebook runs top-to-bottom from a fresh kernel."
+        }));
+      }
+
+      const errorOutputs = cells.flatMap((cell, index) =>
+        cell.outputs
+          .filter(output => output && output.output_type === "error")
+          .map(output => ({
+            cellIndex: index + 1,
+            ename: output.ename || "Error",
+            evalue: output.evalue || "",
+          }))
+      );
+      if (errorOutputs.length) {
+        const examples = errorOutputs.slice(0, 3)
+          .map(error => `cell ${error.cellIndex}: ${error.ename}${error.evalue ? `: ${error.evalue}` : ""}`)
+          .join("; ");
+        findings.push(finding({
+          id: "LC011",
+          severity: "high",
+          title: "Notebook contains saved error output",
+          file: label,
+          evidence: `${errorOutputs.length} saved error output(s); examples: ${examples}`,
+          why: "A committed traceback is strong evidence that the notebook was not saved after a clean successful rerun.",
+          fix: "Fix the failing cell, restart the kernel, run all cells, and save the notebook without error outputs."
+        }));
+      }
+
+      const absolutePathRegexes = [
+        /[A-Za-z]:(?:\\|\/)[^\n\r"']+/g,
+        /\/Users\/[^\s"']+/g,
+        /\/home\/[^\s"']+/g,
+        /\/mnt\/[^\s"']+/g,
+      ];
+
+      const readVariablePatterns = [
+        /pd\.read_(?:csv|parquet|json|excel)\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/g,
+        /open\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?:,\s*['"]r['"])?/g,
+      ];
+      const writeVariablePatterns = [
+        /to_(?:csv|parquet|json|excel)\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/g,
+        /savefig\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/g,
+      ];
+
+      const readPaths = [];
+      const writePaths = [];
+      let usesRandomness = false;
+      let seedsRandomness = false;
+      const notebookAssignments = {};
+
+      cells.forEach(cell => {
+        const assignments = { ...notebookAssignments, ...extractAssignments(cell.source) };
+        readPaths.push(...extractPaths(cell.source, readLiteralPatterns));
+        readPaths.push(...extractVariablePaths(cell.source, assignments, readVariablePatterns));
+        writePaths.push(...extractPaths(cell.source, writeLiteralPatterns));
+        writePaths.push(...extractVariablePaths(cell.source, assignments, writeVariablePatterns));
+        Object.assign(notebookAssignments, extractAssignments(cell.source));
+
+        for (const regex of absolutePathRegexes) {
+          const match = cell.source.replaceAll("\\\\", "\\").match(regex);
+          if (match && match.length) {
+            if (match[0].includes("://")) continue;
+            findings.push(finding({
+              id: "LC006",
+              severity: "medium",
+              title: "Absolute machine-local path",
+              file: label,
+              evidence: `Found path-like string '${match[0].replace(/\\+$/, "")}'.`,
+              why: "Hardcoded local paths make the notebook brittle on other machines.",
+              fix: "Use project-relative paths, notebook parameters, or environment variables."
+            }));
+            break;
+          }
+        }
+
+        if (/\brandom\.|\bnp\.random\.|\bnumpy\.random\.|\btorch\.(?:rand|randn|randint|bernoulli|multinomial)\b/.test(cell.source)) {
+          usesRandomness = true;
+        }
+        if (/\brandom\.seed\(|\bnp\.random\.seed\(|\bnumpy\.random\.seed\(|\btorch\.manual_seed\(/.test(cell.source)) {
+          seedsRandomness = true;
+        }
+      });
+
+      if (usesRandomness && !seedsRandomness) {
+        findings.push(finding({
+          id: "LC007",
+          severity: "medium",
+          title: "Randomness used without visible seeding",
+          file: label,
+          evidence: "Detected randomness-related APIs, but no obvious seed call in the notebook.",
+          why: "Results may drift between runs even if the notebook executes successfully.",
+          fix: "Set and document seeds for the randomness sources used here."
+        }));
+      }
+
+      const sklearnIssues = sklearnRandomStateIssues(cells.map(cell => cell.source).join("\n"));
+      if (sklearnIssues.length) {
+        findings.push(finding({
+          id: "LC016",
+          severity: "medium",
+          title: "Scikit-learn randomness lacks random_state",
+          file: label,
+          evidence: `Detected sklearn calls without random_state: ${sklearnIssues.slice(0, 4).join("; ")}.`,
+          why: "Common sklearn splitters and randomized estimators can produce different splits or model fits between runs.",
+          fix: "Pass a documented random_state value to train/test splits, shuffled splitters, and randomized sklearn estimators."
+        }));
+      }
+
+      const pandasIssues = pandasRandomStateIssues(cells.map(cell => cell.source).join("\n"));
+      if (pandasIssues.length) {
+        findings.push(finding({
+          id: "LC017",
+          severity: "medium",
+          title: "Pandas sampling lacks random_state",
+          file: label,
+          evidence: `Detected pandas sample calls without random_state: ${pandasIssues.slice(0, 4).join("; ")}.`,
+          why: "Pandas sampling can produce different rows between runs, which makes notebook results and train/eval subsets drift.",
+          fix: "Pass a documented random_state value to pandas sample() calls used in reproducible workflows."
+        }));
+      }
+
+      const graphEdges = [];
+      const uniqueReadPaths = Array.from(new Set(readPaths));
+      const uniqueWritePaths = Array.from(new Set(writePaths));
+      uniqueReadPaths.forEach(path => graphEdges.push({ source: path, kind: "reads", target: label }));
+      uniqueWritePaths.forEach(path => graphEdges.push({ source: label, kind: "writes", target: path }));
+
+      if (context.repoPaths) {
+        uniqueReadPaths.forEach(path => {
+          if (repoHasPath(context.repoPaths, label, path)) return;
+          findings.push(finding({
+            id: "LC005",
+            severity: "high",
+            title: "Referenced input artifact missing from selected files",
+            file: label,
+            evidence: `Reads '${path}', but that path was not included in the selected files.`,
+            why: "A new user may not be able to run the workflow because required inputs are missing.",
+            fix: "Commit the artifact, document how to obtain it, or include it in the reproducible package."
+          }));
+        });
+      }
+
+      const scored = scoreFindings(findings);
+      return {
+        label,
+        mode: context.repoPaths ? "browser-file-set" : "single-notebook",
+        cells,
+        codeCells: cells.length,
+        filesCount: 1,
+        notebookCount: 1,
+        pythonFiles: 0,
+        findings,
+        severityCounts: severityCounts(findings),
+        scores: scored.scores,
+        overall: scored.overall,
+        graphEdges,
+        sources: [{ id: label, label, kind: "notebook" }],
+      };
+    }
+
+    function analyzeSourceText(source, label, context) {
+      const findings = [];
+      const assignments = extractAssignments(source);
+      const readVariablePatterns = [
+        /pd\.read_(?:csv|parquet|json|excel)\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/g,
+        /open\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?:,\s*['"]r['"])?/g,
+      ];
+      const writeVariablePatterns = [
+        /to_(?:csv|parquet|json|excel)\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/g,
+        /savefig\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/g,
+      ];
+      const readPaths = [
+        ...extractPaths(source, readLiteralPatterns),
+        ...extractVariablePaths(source, assignments, readVariablePatterns),
+      ];
+      const writePaths = [
+        ...extractPaths(source, writeLiteralPatterns),
+        ...extractVariablePaths(source, assignments, writeVariablePatterns),
+      ];
+
+      const absolutePathRegexes = [
+        /[A-Za-z]:(?:\\|\/)[^\n\r"']+/g,
+        /\/Users\/[^\s"']+/g,
+        /\/home\/[^\s"']+/g,
+        /\/mnt\/[^\s"']+/g,
+      ];
+      for (const regex of absolutePathRegexes) {
+        const match = source.replaceAll("\\\\", "\\").match(regex);
+        if (match && match.length && !match[0].includes("://")) {
+          findings.push(finding({
+            id: "LC006",
+            severity: "medium",
+            title: "Absolute machine-local path",
+            file: label,
+            evidence: `Found path-like string '${match[0].replace(/\\+$/, "")}'.`,
+            why: "Hardcoded local paths make the workflow brittle on other machines.",
+            fix: "Use project-relative paths, environment variables, or documented configuration."
+          }));
+          break;
+        }
+      }
+
+      if (/\brandom\.|\bnp\.random\.|\bnumpy\.random\.|\btorch\.(?:rand|randn|randint|bernoulli|multinomial)\b/.test(source)
+        && !/\brandom\.seed\(|\bnp\.random\.seed\(|\bnumpy\.random\.seed\(|\btorch\.manual_seed\(/.test(source)) {
+        findings.push(finding({
+          id: "LC007",
+          severity: "medium",
+          title: "Randomness used without visible seeding",
+          file: label,
+          evidence: "Detected randomness-related APIs, but no obvious seed call in the same file.",
+          why: "Results may drift between runs even if the code itself executes successfully.",
+          fix: "Set and document seeds for the randomness sources used here."
+        }));
+      }
+
+      const sklearnIssues = sklearnRandomStateIssues(source);
+      if (sklearnIssues.length) {
+        findings.push(finding({
+          id: "LC016",
+          severity: "medium",
+          title: "Scikit-learn randomness lacks random_state",
+          file: label,
+          evidence: `Detected sklearn calls without random_state: ${sklearnIssues.slice(0, 4).join("; ")}.`,
+          why: "Common sklearn splitters and randomized estimators can produce different splits or model fits between runs.",
+          fix: "Pass a documented random_state value to train/test splits, shuffled splitters, and randomized sklearn estimators."
+        }));
+      }
+
+      const pandasIssues = pandasRandomStateIssues(source);
+      if (pandasIssues.length) {
+        findings.push(finding({
+          id: "LC017",
+          severity: "medium",
+          title: "Pandas sampling lacks random_state",
+          file: label,
+          evidence: `Detected pandas sample calls without random_state: ${pandasIssues.slice(0, 4).join("; ")}.`,
+          why: "Pandas sampling can produce different rows between runs, which makes notebook results and train/eval subsets drift.",
+          fix: "Pass a documented random_state value to pandas sample() calls used in reproducible workflows."
+        }));
+      }
+
+      Array.from(new Set(readPaths)).forEach(path => {
+        if (repoHasPath(context.repoPaths, label, path)) return;
+        findings.push(finding({
+          id: "LC005",
+          severity: "high",
+          title: "Referenced input artifact missing from selected files",
+          file: label,
+          evidence: `Reads '${path}', but that path was not included in the selected files.`,
+          why: "A new user may not be able to run the workflow because required inputs are missing.",
+          fix: "Commit the artifact, document how to obtain it, or include it in the reproducible package."
+        }));
+      });
+
+      const graphEdges = [];
+      Array.from(new Set(readPaths)).forEach(path => graphEdges.push({ source: path, kind: "reads", target: label }));
+      Array.from(new Set(writePaths)).forEach(path => graphEdges.push({ source: label, kind: "writes", target: path }));
+      return { findings, graphEdges };
+    }
+
+    function findUnpinnedRequirementLines(path, text) {
+      const findings = [];
+      text.split(/\r?\n/).forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("-r ") || trimmed.startsWith("--")) return;
+        if (/[<>=~!]=?/.test(trimmed)) return;
+        findings.push(finding({
+          id: "LC004",
+          severity: "medium",
+          title: "Unpinned dependency",
+          file: path,
+          evidence: `Dependency '${trimmed}' does not pin a version.`,
+          why: "Environment rebuilds can drift over time when critical dependencies are unpinned.",
+          fix: "Pin this dependency to an exact or tightly bounded version."
+        }));
+      });
+      return findings;
+    }
+
+    function findUnpinnedPyprojectLines(path, text) {
+      const findings = [];
+      const dependencyRegex = /["']([A-Za-z0-9_.-]+(?:\[[^\]]+\])?(?:\s*[<>=~!]=?.*)?)["']/g;
+      for (const match of text.matchAll(dependencyRegex)) {
+        const dependency = match[1].trim();
+        if (!dependency || dependency.includes("://") || dependency.startsWith("python")) continue;
+        if (/[<>=~!]=?/.test(dependency)) continue;
+        findings.push(finding({
+          id: "LC004",
+          severity: "medium",
+          title: "Unpinned dependency",
+          file: path,
+          evidence: `Dependency '${dependency}' does not pin a version.`,
+          why: "Environment rebuilds can drift over time when critical dependencies are unpinned.",
+          fix: "Pin this dependency to an exact or tightly bounded version."
+        }));
+      }
+      return findings;
+    }
+
+    function findUnpinnedEnvironmentLines(path, text) {
+      const findings = [];
+      text.split(/\r?\n/).forEach(line => {
+        const match = line.match(/^\s*-\s*([A-Za-z0-9_.-]+(?:[<>=~!].*)?)\s*$/);
+        if (!match) return;
+        const dependency = match[1].trim();
+        if (!dependency || dependency === "pip" || /[<>=~!]=?/.test(dependency)) return;
+        findings.push(finding({
+          id: "LC004",
+          severity: "medium",
+          title: "Unpinned dependency",
+          file: path,
+          evidence: `Dependency '${dependency}' does not pin a version.`,
+          why: "Environment rebuilds can drift over time when critical dependencies are unpinned.",
+          fix: "Pin this dependency to an exact or tightly bounded version."
+        }));
+      });
+      return findings;
+    }
+
+    function findReadmeDrift(path, text, repoPaths) {
+      const findings = [];
+      const commandRegex = /(?:python|python3)\s+([A-Za-z0-9_./\\-]+\.py)/g;
+      for (const match of text.matchAll(commandRegex)) {
+        const referenced = normalizeRepoPath(match[1]);
+        if (!referenced || repoPaths.has(referenced) || repoPaths.has(joinRepoPath(dirname(path), referenced))) continue;
+        findings.push(finding({
+          id: "LC008",
+          severity: "medium",
+          title: "README command references a missing path",
+          file: path,
+          evidence: `Command '${match[0]}' points to '${referenced}', which was not included in the selected files.`,
+          why: "Setup instructions lose trust quickly when they point to files that do not exist.",
+          fix: "Update the README command or include the missing entrypoint."
+        }));
+      }
+      return findings;
+    }
+
+    function readmeCommandCandidateLines(text) {
+      const lines = [];
+      let inFence = false;
+      String(text || "").split(/\r?\n/).forEach(rawLine => {
+        const stripped = rawLine.trim();
+        if (stripped.startsWith("```") || stripped.startsWith("~~~")) {
+          inFence = !inFence;
+          return;
+        }
+        if (!stripped) return;
+        const candidate = stripped
+          .replace(/^(?:[-*+]\s+|\d+[.)]\s+)/, "")
+          .replace(/^(?:[$>]\s*)/, "");
+        if (inFence || readmeRunInstructionRegex().test(candidate)) {
+          lines.push(candidate);
+        }
+      });
+      return lines.join("\n");
+    }
+
+    function readmeRunInstructionRegex() {
+      return /^(?:python(?:3)?\s+(?:-m\s+[\w.]+|[^\s`]+\.py)\b|jupyter\s+(?:notebook|lab)(?:\s+[^\s`]+\.ipynb\b)?|pip\s+install\b|python(?:3)?\s+-m\s+pip\s+install\b|conda\s+env\s+create\b|poetry\s+(?:install|run)\b|uv\s+(?:sync|run)\b|make(?:\s+\w[\w.-]*)?\b|bash\s+[^\s`]+\.sh\b|pytest\b|snakemake\b|dvc\s+repro\b)/;
+    }
+
+    function hasReadmeRunInstructions(files) {
+      const readme = files.find(file => normalizeRepoPath(file.path).toLowerCase().split("/").pop() === "readme.md");
+      if (!readme) return false;
+      return readmeCommandCandidateLines(readme.text).some(line => readmeRunInstructionRegex().test(line));
+    }
+
+    function hasPythonRuntimeSpec(files) {
+      return files.some(file => {
+        const lower = normalizeRepoPath(file.path).toLowerCase();
+        const name = lower.split("/").pop();
+        const text = file.text || "";
+        if ((name === ".python-version" || name === "runtime.txt") && text.trim()) return true;
+        if (name === "pyproject.toml") {
+          return /requires-python\s*=\s*["'][^"']+["']/.test(text)
+            || /\[tool\.poetry\.dependencies\][\s\S]*?^python\s*=\s*["'][^"']+["']/m.test(text);
+        }
+        if (name === "pipfile") {
+          return /\[requires\][\s\S]*?python_(?:full_)?version\s*=\s*["'][^"']+["']/.test(text);
+        }
+        if (name === "environment.yml" || name === "environment.yaml") {
+          return /^\s*-\s*python\s*[<>=~!]/m.test(text);
+        }
+        if (name === "setup.cfg") {
+          return /\[options\][\s\S]*?python_requires\s*=/.test(text);
+        }
+        return false;
+      });
+    }
+
+    function isManifestPath(path) {
+      const name = normalizeRepoPath(path).split("/").pop().toLowerCase();
+      return ["requirements.txt", "pyproject.toml", "environment.yml", "environment.yaml", "pipfile", "poetry.lock"].includes(name);
+    }
+
+    async function readSelectedFiles(fileList) {
+      const entries = [];
+      for (const file of Array.from(fileList)) {
+        const path = normalizeRepoPath(file.webkitRelativePath || file.name);
+        if (!path) continue;
+        const suffix = path.split(".").pop().toLowerCase();
+        const textLike = ["ipynb", "py", "md", "txt", "toml", "yml", "yaml", "json"].includes(suffix)
+          || ["requirements.txt", "pipfile", ".python-version", "runtime.txt", "setup.cfg"].includes(path.split("/").pop().toLowerCase());
+        let text = "";
+        if (textLike && file.size <= 2_000_000) {
+          text = await file.text();
+        }
+        entries.push({ path, name: file.name, size: file.size, text, textLike });
+      }
+      return entries;
+    }
+
+    function analyzeFileSet(files, label = "browser-selected files") {
+      const repoPaths = new Set(files.map(file => normalizeRepoPath(file.path)));
+      const findings = [];
+      const graphEdges = [];
+      const sources = [];
+      let codeCells = 0;
+      let notebookCount = 0;
+      let pythonFiles = 0;
+
+      const notebooks = files.filter(file => file.path.toLowerCase().endsWith(".ipynb") && file.text);
+      const pythonSources = files.filter(file => file.path.toLowerCase().endsWith(".py") && file.text);
+      notebookCount = notebooks.length;
+      pythonFiles = pythonSources.length;
+
+      if ((notebookCount || pythonFiles) && !files.some(file => isManifestPath(file.path))) {
+        findings.push(finding({
+          id: "LC003",
+          severity: "high",
+          title: "Missing environment manifest",
+          file: ".",
+          evidence: "Found runnable notebooks or Python files, but no dependency manifest was included in the selected files.",
+          why: "A new user cannot reliably recreate the environment needed to run the project.",
+          fix: "Add requirements.txt, pyproject.toml, environment.yml, or another clear environment manifest."
+        }));
+      }
+
+      if ((notebookCount || pythonFiles) && !hasPythonRuntimeSpec(files)) {
+        findings.push(finding({
+          id: "LC012",
+          severity: "medium",
+          title: "Missing Python runtime version",
+          file: ".",
+          evidence: "Found runnable notebooks or Python files, but no Python runtime version was included in the selected files.",
+          why: "A repo can have pinned packages and still fail to rebuild if users guess the wrong Python version.",
+          fix: "Declare the Python version with requires-python, .python-version, runtime.txt, Pipfile [requires], setup.cfg python_requires, or a Conda python= dependency."
+        }));
+      }
+
+      if ((notebookCount || pythonFiles) && !hasReadmeRunInstructions(files)) {
+        findings.push(finding({
+          id: "LC013",
+          severity: "medium",
+          title: "Missing setup or run instructions",
+          file: "README.md",
+          evidence: files.some(file => normalizeRepoPath(file.path).toLowerCase().split("/").pop() === "readme.md")
+            ? "README.md exists, but no clear setup or run command was included in the selected files."
+            : "README.md was not included in the selected files.",
+          why: "A repo can contain runnable notebooks or scripts but still be hard to hand off if the next person does not know which command to start with.",
+          fix: "Add a short Quick start section with environment setup and the command or notebook needed to reproduce the main workflow."
+        }));
+      }
+
+      files.forEach(file => {
+        const lower = file.path.toLowerCase();
+        const name = lower.split("/").pop();
+        if (name === "requirements.txt") findings.push(...findUnpinnedRequirementLines(file.path, file.text));
+        if (name === "pyproject.toml") findings.push(...findUnpinnedPyprojectLines(file.path, file.text));
+        if (name === "environment.yml" || name === "environment.yaml") findings.push(...findUnpinnedEnvironmentLines(file.path, file.text));
+        if (name === "readme.md") findings.push(...findReadmeDrift(file.path, file.text, repoPaths));
+      });
+
+      notebooks.forEach(file => {
+        try {
+          const notebookReport = analyzeNotebook(JSON.parse(file.text), file.path, { repoPaths });
+          codeCells += notebookReport.codeCells;
+          findings.push(...notebookReport.findings);
+          graphEdges.push(...notebookReport.graphEdges);
+          sources.push({ id: file.path, label: file.path, kind: "notebook" });
+        } catch (error) {
+          findings.push(finding({
+            id: "LC000",
+            severity: "medium",
+            title: "Notebook could not be parsed",
+            file: file.path,
+            evidence: error.message,
+            why: "A malformed notebook cannot be audited or reliably rerun.",
+            fix: "Open and resave the notebook, or check whether the selected file is valid JSON."
+          }));
+        }
+      });
+
+      pythonSources.forEach(file => {
+        const sourceReport = analyzeSourceText(file.text, file.path, { repoPaths });
+        findings.push(...sourceReport.findings);
+        graphEdges.push(...sourceReport.graphEdges);
+        sources.push({ id: file.path, label: file.path, kind: "python" });
+      });
+
+      const scored = scoreFindings(findings);
+      return {
+        label,
+        mode: "browser-file-set",
+        cells: { length: codeCells },
+        codeCells,
+        filesCount: files.length,
+        notebookCount,
+        pythonFiles,
+        findings,
+        severityCounts: severityCounts(findings),
+        scores: scored.scores,
+        overall: scored.overall,
+        graphEdges,
+        sources,
+      };
+    }
+
+    function renderGraphSvg(report) {
+      if (!report.graphEdges.length) {
+        return "<div class='small'>No read/write lineage edges detected in the selected files.</div>";
+      }
+      const laneX = { input: 120, notebook: 320, python: 320, artifact: 520 };
+      const nodeMap = new Map();
+      (report.sources || [{ id: report.label, label: report.label, kind: "notebook" }]).forEach(source => {
+        nodeMap.set(source.id, { id: source.id, label: source.label.split("/").pop(), kind: source.kind });
+      });
+      report.graphEdges.forEach(edge => {
+        if (!nodeMap.has(edge.source)) {
+          nodeMap.set(edge.source, {
+            id: edge.source,
+            label: edge.source.split("/").pop(),
+            kind: edge.kind === "reads" ? "input" : "notebook",
+          });
+        }
+        if (!nodeMap.has(edge.target)) {
+          nodeMap.set(edge.target, {
+            id: edge.target,
+            label: edge.target.split("/").pop(),
+            kind: edge.kind === "writes" ? "artifact" : "notebook",
+          });
+        }
+      });
+
+      const lanes = { input: [], notebook: [], python: [], artifact: [] };
+      nodeMap.forEach(node => lanes[node.kind in lanes ? node.kind : "notebook"].push(node));
+
+      const positions = new Map();
+      Object.entries(lanes).forEach(([kind, nodes]) => {
+        nodes.forEach((node, index) => {
+          positions.set(node.id, { x: laneX[kind], y: 80 + index * 90, kind });
+        });
+      });
+
+      const height = Math.max(...Array.from(positions.values()).map(pos => pos.y), 80) + 70;
+      const edgeMarkup = report.graphEdges.map(edge => {
+        const start = positions.get(edge.source);
+        const end = positions.get(edge.target);
+        if (!start || !end) return "";
+        const mid = Math.round((start.x + end.x) / 2);
+        return `<path d="M ${start.x} ${start.y} C ${mid} ${start.y}, ${mid} ${end.y}, ${end.x} ${end.y}" fill="none" stroke="#0f766e" stroke-width="3" stroke-opacity="0.45" />`;
+      }).join("");
+
+      const nodeMarkup = Array.from(nodeMap.values()).map(node => {
+        const pos = positions.get(node.id);
+        const fill = {
+          input: "#fef3c7",
+          notebook: "#d1fae5",
+          python: "#dbeafe",
+          artifact: "#fee2e2",
+        }[node.kind] || "#e5e7eb";
+        return `
+          <g>
+            <rect x="${pos.x - 82}" y="${pos.y - 24}" width="164" height="48" rx="14" fill="${fill}" stroke="#d8cdb9" />
+            <text x="${pos.x}" y="${pos.y - 4}" text-anchor="middle" font-size="12" font-weight="700" fill="#17202a">${escapeHtml(node.kind.toUpperCase())}</text>
+            <text x="${pos.x}" y="${pos.y + 14}" text-anchor="middle" font-size="12" fill="#17202a">${escapeHtml(node.label)}</text>
+          </g>
+        `;
+      }).join("");
+
+      return `<svg viewBox="0 0 640 ${height}" role="img" aria-label="Notebook lineage graph">${edgeMarkup}${nodeMarkup}</svg>`;
+    }
+
+    function topRisks(report, limit = 5) {
+      const severityRank = { high: 0, medium: 1, low: 2 };
+      const grouped = new Map();
+      report.findings.forEach(finding => {
+        const key = `${finding.id}|${finding.title}|${finding.severity}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, { ...finding, count: 0 });
+        }
+        grouped.get(key).count += 1;
+      });
+      return Array.from(grouped.values())
+        .sort((left, right) => {
+          const severityDelta = (severityRank[left.severity] ?? 99) - (severityRank[right.severity] ?? 99);
+          if (severityDelta !== 0) return severityDelta;
+          if (right.count !== left.count) return right.count - left.count;
+          return left.id.localeCompare(right.id);
+        })
+        .slice(0, limit);
+    }
+
+    function pluralize(count, singular, plural) {
+      return `${count} ${count === 1 ? singular : (plural || `${singular}s`)}`;
+    }
+
+    function weakestBrowserArea(report) {
+      const areas = [
+        ["Environment", report.scores.environment, "Can a new person recreate the environment without guesswork?"],
+        ["Determinism", report.scores.determinism, "Will notebooks and ML code rerun without hidden state or drifting randomness?"],
+        ["Artifact availability", report.scores.artifacts, "Are referenced inputs and generated outputs present or clearly accounted for?"],
+        ["Portability", report.scores.portability, "Does the selected code avoid machine-specific assumptions?"],
+        ["Onboarding", report.scores.onboarding, "Can the next person tell what to run?"],
+      ];
+      return areas.sort((left, right) => left[1] - right[1])[0];
+    }
+
+    function scorecardSignal(report) {
+      if (report.overall >= 90 && report.severityCounts.high === 0) {
+        return "Strong handoff candidate: no high-severity findings and the score is near release-ready.";
+      }
+      if (report.severityCounts.high > 0) {
+        return `Not handoff-ready yet: fix ${pluralize(report.severityCounts.high, "high-severity finding")} before sending this repo to a reviewer, student, or new engineer.`;
+      }
+      if (report.overall >= 75) {
+        return "Mostly usable, but the medium/low findings are still worth cleaning before a formal handoff.";
+      }
+      return "Needs reproducibility work before handoff; start with the top risks below.";
+    }
+
+    function markdownCell(value) {
+      return String(value).replaceAll("\n", " ").replaceAll("|", "\\|");
+    }
+
+    function toScorecard(report) {
+      const risks = topRisks(report, 3);
+      const [weakestLabel, weakestScore, weakestHelp] = weakestBrowserArea(report);
+      const lines = [
+        "# labcheck Browser Scorecard",
+        "",
+        `- Target: \`${report.label}\``,
+        `- Overall score: **${report.overall}/100**`,
+        `- Scope: **${pluralize(report.notebookCount || 0, "notebook")}**, **${pluralize(report.pythonFiles || 0, "Python file")}**, **${pluralize(report.filesCount || 1, "selected file")}**`,
+        `- Findings: **${report.findings.length}** (\`${report.severityCounts.high}\` high, \`${report.severityCounts.medium}\` medium, \`${report.severityCounts.low}\` low)`,
+        `- Weakest area: **${weakestLabel}** (${weakestScore}/100) - ${weakestHelp}`,
+        "",
+        "## Triage Signal",
+        "",
+        scorecardSignal(report),
+        "",
+        "## Top Risks",
+        "",
+      ];
+      if (risks.length) {
+        lines.push("| Risk | Severity | Scope | First evidence |");
+        lines.push("|---|---|---|---|");
+        risks.forEach(risk => {
+          const evidence = markdownCell(`${risk.file}: ${risk.evidence}`);
+          lines.push(`| \`${risk.id}\` ${risk.title} | \`${risk.severity}\` | ${pluralize(risk.count, "finding")} | ${evidence} |`);
+        });
+      } else {
+        lines.push("No top risks.");
+      }
+      lines.push("", "## First Fixes", "");
+      if (risks.length) {
+        risks.forEach((risk, index) => {
+          lines.push(`${index + 1}. Fix ${risk.id} first because it affects ${pluralize(risk.count, "finding")}.`);
+          lines.push(`   Suggested fix: ${markdownCell(risk.fix)}`);
+        });
+      } else {
+        lines.push("No fixes needed before sharing.");
+      }
+      lines.push(
+        "",
+        "## Next Step",
+        "",
+        "- Download the full browser Markdown report from this page.",
+        "- For full repository checks, install the CLI and run `labcheck scan . --format markdown`.",
+      );
+      return lines.join("\n");
+    }
+
+    function toMarkdown(report) {
+      const risks = topRisks(report);
+      const lines = [
+        "# labcheck browser audit",
+        "",
+        `- Target: \`${report.label}\``,
+        `- Files selected: **${report.filesCount || 1}**`,
+        `- Notebooks: **${report.notebookCount || 0}**`,
+        `- Python files: **${report.pythonFiles || 0}**`,
+        `- Overall Score: **${report.overall}**`,
+        `- Severity Mix: **${report.severityCounts.high} high**, **${report.severityCounts.medium} medium**, **${report.severityCounts.low} low**`,
+        "",
+        "## Scores",
+        "",
+        "| Category | Score |",
+        "|---|---:|",
+        `| Environment | ${report.scores.environment} |`,
+        `| Determinism | ${report.scores.determinism} |`,
+        `| Artifact availability | ${report.scores.artifacts} |`,
+        `| Portability | ${report.scores.portability} |`,
+        `| Onboarding | ${report.scores.onboarding} |`,
+        "",
+        "## Top Risks",
+        "",
+      ];
+      if (risks.length) {
+        lines.push("| Risk | Severity | Scope | First evidence |");
+        lines.push("|---|---|---|---|");
+        risks.forEach(risk => {
+          const evidence = `${risk.file}: ${risk.evidence}`.replaceAll("|", "\\|");
+          lines.push(`| \`${risk.id}\` ${risk.title} | \`${risk.severity}\` | ${risk.count} finding${risk.count === 1 ? "" : "s"} | ${evidence} |`);
+        });
+      } else {
+        lines.push("No top risks.");
+      }
+      lines.push(
+        "",
+        "## Lineage",
+        "",
+      );
+      if (report.graphEdges.length) {
+        report.graphEdges.forEach(edge => lines.push(`- \`${edge.source}\` -> \`${edge.kind}\` -> \`${edge.target}\``));
+      } else {
+        lines.push("- No lineage edges detected.");
+      }
+      lines.push("", "## Findings", "");
+      if (!report.findings.length) {
+        lines.push("No findings.");
+      } else {
+        report.findings.forEach(finding => {
+          lines.push(`### ${finding.id} - ${finding.title}`);
+          lines.push("");
+          lines.push(`- Severity: \`${finding.severity}\``);
+          lines.push(`- File: \`${finding.file}\``);
+          lines.push(`- Evidence: ${finding.evidence}`);
+          lines.push(`- Why it matters: ${finding.why}`);
+          lines.push(`- Suggested fix: ${finding.fix}`);
+          lines.push("");
+        });
+      }
+      return lines.join("\n");
+    }
+
+    function downloadText(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function copyScorecardToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        if (!document.execCommand("copy")) {
+          throw new Error("copy command was rejected");
+        }
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    }
+
+    function renderReport(report) {
+      lastReport = report;
+      results.classList.remove("hidden");
+      reportTitle.textContent = report.label;
+      summary.innerHTML = `
+        <span>${report.filesCount || 1} selected file${(report.filesCount || 1) === 1 ? "" : "s"}</span>
+        <span>${report.notebookCount || 0} notebook${(report.notebookCount || 0) === 1 ? "" : "s"}</span>
+        <span>${report.pythonFiles || 0} Python file${(report.pythonFiles || 0) === 1 ? "" : "s"}</span>
+        <span>${report.severityCounts.high} high findings</span>
+        <span>${report.severityCounts.medium} medium findings</span>
+        <span>${report.graphEdges.length} lineage edges</span>
+      `;
+
+      const environmentText = report.mode === "single-notebook"
+        ? "Single-notebook scans cannot verify repo-level dependency manifests."
+        : "Dependency manifest presence and rough pinning checks.";
+      const artifactsText = report.mode === "single-notebook"
+        ? "Single-file scans show lineage hints but cannot verify repo-level file presence."
+        : "Selected-file presence checks for local inputs and generated artifacts.";
+      scoreGrid.innerHTML = `
+        <div class="score-card"><div class="score">${report.overall}</div><div class="score-title">Overall</div><p class="small">A quick browser-side reproducibility triage score.</p></div>
+        <div class="score-card"><div class="score">${report.scores.environment}</div><div class="score-title">Environment</div><p class="small">${environmentText}</p></div>
+        <div class="score-card"><div class="score">${report.scores.determinism}</div><div class="score-title">Determinism</div><p class="small">Execution order, hidden state, saved errors, visible seeding, and sklearn/pandas random_state.</p></div>
+        <div class="score-card"><div class="score">${report.scores.artifacts}</div><div class="score-title">Artifacts</div><p class="small">${artifactsText}</p></div>
+        <div class="score-card"><div class="score">${report.scores.portability}</div><div class="score-title">Portability</div><p class="small">Machine-local paths and brittle assumptions.</p></div>
+        <div class="score-card"><div class="score">${report.scores.onboarding}</div><div class="score-title">Onboarding</div><p class="small">How much friction the next person is likely to hit.</p></div>
+      `;
+
+      lineage.textContent = report.graphEdges.length
+        ? report.graphEdges.map(edge => `${edge.source} -> ${edge.kind} -> ${edge.target}`).join("\n")
+        : "No simple read/write lineage edges detected in the selected files.";
+      graphShell.innerHTML = renderGraphSvg(report);
+
+      const risks = topRisks(report);
+      topRisksList.innerHTML = risks.length
+        ? risks.map(risk => `
+            <article class="finding severity-${escapeHtml(risk.severity)}">
+              <div class="finding-head">
+                <span class="badge">${escapeHtml(risk.severity.toUpperCase())}</span>
+                <strong>${escapeHtml(risk.id)} - ${escapeHtml(risk.title)}</strong>
+              </div>
+              <p class="small"><strong>Scope:</strong> ${risk.count} finding${risk.count === 1 ? "" : "s"}</p>
+              <p class="small"><strong>First evidence:</strong> ${escapeHtml(risk.file)}: ${escapeHtml(risk.evidence)}</p>
+              <p class="small"><strong>Suggested fix:</strong> ${escapeHtml(risk.fix)}</p>
+            </article>
+          `).join("")
+        : `<article class="finding"><strong>No top risks.</strong><p class="small">This quick pass did not find obvious browser-auditable reproducibility risks.</p></article>`;
+
+      findingsList.innerHTML = report.findings.length
+        ? report.findings.map(finding => `
+            <article class="finding severity-${escapeHtml(finding.severity)}">
+              <div class="finding-head">
+                <span class="badge">${escapeHtml(finding.severity.toUpperCase())}</span>
+                <strong>${escapeHtml(finding.id)} - ${escapeHtml(finding.title)}</strong>
+              </div>
+              <p class="small"><strong>File:</strong> ${escapeHtml(finding.file)}</p>
+              <p class="small"><strong>Evidence:</strong> ${escapeHtml(finding.evidence)}</p>
+              <p class="small"><strong>Why it matters:</strong> ${escapeHtml(finding.why)}</p>
+              <p class="small"><strong>Suggested fix:</strong> ${escapeHtml(finding.fix)}</p>
+            </article>
+          `).join("")
+        : `<article class="finding"><strong>No findings.</strong><p class="small">This quick pass did not find obvious browser-auditable reproducibility issues.</p></article>`;
+    }
+
+    function loadNotebook(name, text) {
+      try {
+        const parsed = JSON.parse(text);
+        const report = analyzeNotebook(parsed, name);
+        renderReport(report);
+      } catch (error) {
+        alert(`Could not parse notebook: ${error.message}`);
+      }
+    }
+
+    async function loadSelectedFiles(fileList) {
+      const files = Array.from(fileList || []);
+      if (!files.length) return;
+      if (files.length === 1 && files[0].name.toLowerCase().endsWith(".ipynb")) {
+        const text = await files[0].text();
+        loadNotebook(files[0].webkitRelativePath || files[0].name, text);
+        return;
+      }
+
+      try {
+        const entries = await readSelectedFiles(files);
+        if (!entries.length) {
+          alert("No readable files were selected.");
+          return;
+        }
+        const firstPath = entries[0].path;
+        const firstRoot = firstPath.includes("/") ? firstPath.split("/")[0] : "";
+        const sameRoot = firstRoot && entries.every(entry => entry.path.startsWith(`${firstRoot}/`));
+        const label = sameRoot ? firstRoot : `${entries.length} selected files`;
+        renderReport(analyzeFileSet(entries, label));
+      } catch (error) {
+        alert(`Could not audit selected files: ${error.message}`);
+      }
+    }
+
+    dropzone.addEventListener("click", event => {
+      if (event.target.closest("button")) return;
+      fileInput.click();
+    });
+    chooseFilesButton.addEventListener("click", event => {
+      event.stopPropagation();
+      fileInput.click();
+    });
+    chooseFolderButton.addEventListener("click", event => {
+      event.stopPropagation();
+      folderInput.click();
+    });
+    fileInput.addEventListener("change", event => {
+      loadSelectedFiles(event.target.files);
+    });
+    folderInput.addEventListener("change", event => {
+      loadSelectedFiles(event.target.files);
+    });
+
+    ["dragenter", "dragover"].forEach(eventName => {
+      dropzone.addEventListener(eventName, event => {
+        event.preventDefault();
+        dropzone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(eventName => {
+      dropzone.addEventListener(eventName, event => {
+        event.preventDefault();
+        dropzone.classList.remove("dragover");
+      });
+    });
+
+    dropzone.addEventListener("drop", event => {
+      loadSelectedFiles(event.dataTransfer.files);
+    });
+
+    loadSampleButton.addEventListener("click", () => {
+      loadNotebook("built-in-broken-sample.ipynb", JSON.stringify(sampleNotebook));
+    });
+
+    loadSampleRepoButton.addEventListener("click", () => {
+      renderReport(analyzeFileSet(sampleRepoFiles, "built-in sample repo snapshot"));
+    });
+
+    copyScorecardButton.addEventListener("click", async () => {
+      if (!lastReport) return;
+      const scorecard = toScorecard(lastReport);
+      try {
+        await copyScorecardToClipboard(scorecard);
+        scorecardStatus.textContent = "Scorecard copied. Paste it into an email, PR comment, or lab handoff note.";
+      } catch (error) {
+        scorecardStatus.textContent = "Could not copy automatically. Download the scorecard instead.";
+      }
+    });
+
+    downloadScorecardButton.addEventListener("click", () => {
+      if (!lastReport) return;
+      downloadText("labcheck-browser-scorecard.md", toScorecard(lastReport), "text/markdown");
+    });
+
+    downloadMarkdownButton.addEventListener("click", () => {
+      if (!lastReport) return;
+      downloadText("labcheck-browser-report.md", toMarkdown(lastReport), "text/markdown");
+    });
+
+    downloadJsonButton.addEventListener("click", () => {
+      if (!lastReport) return;
+      downloadText("labcheck-browser-report.json", JSON.stringify(lastReport, null, 2), "application/json");
+    });
+  </script>
+</body>
+</html>

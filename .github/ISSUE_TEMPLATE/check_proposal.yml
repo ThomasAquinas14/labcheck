@@ -1,0 +1,49 @@
+name: Check proposal
+description: Suggest a new reproducibility, portability, or onboarding check.
+title: "[Check]: "
+labels: ["check-proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Good labcheck rules are deterministic, explainable, and useful without API keys or runtime execution.
+  - type: textarea
+    id: pain
+    attributes:
+      label: What reproducibility pain does this catch?
+      description: Describe the real-world failure mode.
+    validations:
+      required: true
+  - type: textarea
+    id: signal
+    attributes:
+      label: What static signal should labcheck inspect?
+      description: File patterns, notebook patterns, dependency metadata, README commands, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Example evidence
+      description: Show what a finding might say.
+      placeholder: "Reads data/foo.csv, but that file is not present in the repo."
+    validations:
+      required: true
+  - type: textarea
+    id: false_positives
+    attributes:
+      label: Likely false positives
+      description: When should this rule stay quiet, or how should users suppress intentional cases?
+    validations:
+      required: true
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      options:
+        - label: This can run without API keys or paid services.
+          required: true
+        - label: This does not require executing user code.
+          required: true
+        - label: This can produce concrete evidence and a suggested fix.
+          required: true

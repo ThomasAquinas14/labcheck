@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use labcheck in a research, teaching, or reproducibility workflow, please cite it using this metadata."
+title: "labcheck: A local-first reproducibility auditor for research and ML repositories"
+type: software
+authors:
+  - family-names: Aquinas
+    given-names: Thomas
+version: 0.1.0
+repository-code: "https://github.com/ThomasAquinas14/labcheck"
+url: "https://github.com/ThomasAquinas14/labcheck"
+license: MIT
+abstract: "labcheck is a no-key, local-first reproducibility auditor that scans notebooks, scripts, environment manifests, README instructions, and simple data lineage to surface handoff risks in research and ML repositories."
+keywords:
+  - reproducibility
+  - notebooks
+  - machine-learning
+  - research-software
+  - continuous-integration

@@ -1,0 +1,36 @@
+name: Public repo case study
+description: Suggest a public research or ML repo for a labcheck case study.
+title: "[Case study]: "
+labels: ["case-study"]
+body:
+  - type: input
+    id: repo
+    attributes:
+      label: Public repository URL
+      placeholder: "https://github.com/owner/repo"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is this repo interesting?
+      description: Notebook-heavy, published paper, popular teaching repo, production ML handoff, etc.
+    validations:
+      required: true
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Primary audience
+      options:
+        - Research lab
+        - ML/data startup
+        - OSS maintainer
+        - Course or teaching repo
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Context or caveats
+      description: Known generated files, expected external datasets, archival notebooks, or anything that should shape interpretation.
