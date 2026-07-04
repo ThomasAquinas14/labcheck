@@ -53,6 +53,7 @@ Run this before tagging, posting, or sending outreach:
 
 ```bash
 python scripts/release_check.py
+python scripts/check_publish_ready.py
 ```
 
 The gate proves:
@@ -133,11 +134,12 @@ If useful, I can run it on one of your public repos and send a compact scorecard
 ## Launch Order
 
 1. Run `python scripts/release_check.py`.
-2. Create a clean publish folder with `python scripts/export_standalone_repo.py .tmp-standalone-labcheck`.
-3. Create a new public GitHub repository named `labcheck`.
-4. Copy or move the exported files into that repository, then run `git init`, commit, and push to `main`.
+2. Run `python scripts/check_publish_ready.py`.
+3. If you want a separate publish folder, create it with `python scripts/export_standalone_repo.py .tmp-standalone-labcheck`.
+4. Create and push the public GitHub repository:
+   `gh repo create ThomasAquinas14/labcheck --public --source=. --remote=origin --push`
 5. Enable GitHub Pages from the Pages workflow.
-6. Add the repository description, website, and topics above.
+6. Add the repository description, website, and topics above, or use the commands in [github-publish-guide.md](github-publish-guide.md).
 7. Pin the sample scorecard/HTML audit in the README and launch post.
 8. Send 10 professor/lab messages and 10 founder/ML-lead messages.
 9. Collect replies and turn the best feedback into issues.

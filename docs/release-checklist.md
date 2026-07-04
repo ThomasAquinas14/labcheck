@@ -10,6 +10,7 @@ The goal is to prove the public-facing story still holds:
 - the sample audits are regenerated from the current scanner
 - the static site export builds
 - the launch hygiene guard confirms required public assets and secret-ignore patterns
+- the publish-readiness guard confirms the standalone repo is clean on `main`
 - the standalone repo export smoke-test can produce a clean temporary publish folder
 - the repository passes its own `labcheck` audit with a score of 100
 - the clean example stays clean
@@ -48,6 +49,7 @@ Before a public launch, also check:
 - `docs/sample-audits/` reflects the current broken example output from `python scripts/build_sample_audits.py`.
 - `dist/site/` was rebuilt with `python scripts/build_static_site.py`.
 - `python scripts/check_launch_hygiene.py` passes before you create or update the standalone public repo.
+- `python scripts/check_publish_ready.py` passes and prints the expected `gh repo create` command.
 - `python scripts/export_standalone_repo.py .tmp-standalone-labcheck` can create a clean publish folder without caches, static export output, local env files, or parent-project artifacts.
 - The GitHub Pages workflow is enabled in the repository settings.
 - `labcheck doctor . --config .labcheck.toml` passes in the environment you plan to demo from.

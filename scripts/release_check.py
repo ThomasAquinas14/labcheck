@@ -25,6 +25,7 @@ def build_checks(python: str = sys.executable) -> list[ReleaseCheck]:
         ReleaseCheck("sample audit export", (python, "scripts/build_sample_audits.py")),
         ReleaseCheck("static site export", (python, "scripts/build_static_site.py")),
         ReleaseCheck("launch hygiene", (python, "scripts/check_launch_hygiene.py")),
+        ReleaseCheck("publish readiness", (python, "scripts/check_publish_ready.py")),
         ReleaseCheck(
             "standalone repo export smoke",
             (python, "scripts/export_standalone_repo.py", ".tmp-standalone-labcheck"),
