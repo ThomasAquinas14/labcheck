@@ -12,6 +12,7 @@ REQUIRED_FILES = [
     ".github/PULL_REQUEST_TEMPLATE.md",
     ".github/workflows/ci.yml",
     ".github/workflows/pages.yml",
+    ".gitattributes",
     ".gitignore",
     ".labcheck.toml",
     "CITATION.cff",
