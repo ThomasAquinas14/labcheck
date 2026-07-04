@@ -28,6 +28,8 @@ Best starting set:
 2. [site/demo.html](../site/demo.html)
 3. [broken-repo-audit.html](sample-audits/broken-repo-audit.html)
 4. [case-studies.md](case-studies.md)
+5. [launch-week-plan.md](launch-week-plan.md)
+6. [outreach-tracker-template.md](outreach-tracker-template.md)
 
 ---
 
@@ -224,3 +226,11 @@ Right now, the strongest proof points are:
 - it surfaces problems that people instantly recognize as painful
 
 That combination is much stronger than "I built a tool with many features."
+
+---
+
+## Week-one operating system
+
+Use [launch-week-plan.md](launch-week-plan.md) for the first seven days after publishing.
+
+Use [outreach-tracker-template.md](outreach-tracker-template.md) to track the first 20 messages without storing private contact details in the public repo.

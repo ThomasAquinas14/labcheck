@@ -34,6 +34,8 @@ def test_static_site_export_contains_public_assets(tmp_path: Path) -> None:
     assert (output_dir / "docs" / "github-publish-guide.md").exists()
     assert (output_dir / "docs" / "lab-adoption-guide.md").exists()
     assert (output_dir / "docs" / "launch-kit.md").exists()
+    assert (output_dir / "docs" / "launch-week-plan.md").exists()
+    assert (output_dir / "docs" / "outreach-tracker-template.md").exists()
     assert (output_dir / "docs" / "release-checklist.md").exists()
 
 

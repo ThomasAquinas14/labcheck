@@ -29,7 +29,9 @@ DOC_FILES = [
     "github-action.md",
     "lab-adoption-guide.md",
     "launch-kit.md",
+    "launch-week-plan.md",
     "outreach-playbook.md",
+    "outreach-tracker-template.md",
     "public-deploy-guide.md",
     "release-checklist.md",
 ]

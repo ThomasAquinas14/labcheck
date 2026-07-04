@@ -141,8 +141,9 @@ If useful, I can run it on one of your public repos and send a compact scorecard
 5. Enable GitHub Pages from the Pages workflow.
 6. Add the repository description, website, and topics above, or use the commands in [github-publish-guide.md](github-publish-guide.md).
 7. Pin the sample scorecard/HTML audit in the README and launch post.
-8. Send 10 professor/lab messages and 10 founder/ML-lead messages.
-9. Collect replies and turn the best feedback into issues.
+8. Follow [launch-week-plan.md](launch-week-plan.md) for the first seven days.
+9. Track the first 20 messages with [outreach-tracker-template.md](outreach-tracker-template.md).
+10. Collect replies and turn the best feedback into issues.
 
 The export folder intentionally excludes `dist/`, caches, virtualenvs, local env files, generated audit packs, and parent-project artifacts. Rebuild `dist/site` in CI or with `python scripts/build_static_site.py` after the standalone repo exists.
 

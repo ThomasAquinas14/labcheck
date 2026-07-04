@@ -57,6 +57,8 @@ def test_landing_page_promotes_audit_pack_for_outreach() -> None:
     assert "labcheck-scorecard.md" in landing
     assert "labcheck pack --zip" in landing
     assert "docs/launch-kit.md" in landing
+    assert "docs/launch-week-plan.md" in landing
+    assert "docs/outreach-tracker-template.md" in landing
     assert "broken-repo-scorecard.md" in landing
     assert "labcheck-audit" in landing
     assert "single archive" in landing
