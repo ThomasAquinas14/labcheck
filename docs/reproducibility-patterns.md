@@ -261,7 +261,7 @@ train, test = train_test_split(df, test_size=0.2, random_state=SEED)
 sample = df.sample(100, random_state=SEED)
 ```
 
-Related checks: `LC007`, `LC016`, `LC017`, `LC031`, `LC032`, `LC033`, `LC034`, `LC039`, `LC040`, `LC058`, `LC059`, `LC060`, `LC061`
+Related checks: `LC007`, `LC016`, `LC017`, `LC031`, `LC032`, `LC033`, `LC034`, `LC039`, `LC040`, `LC058`, `LC059`, `LC060`, `LC061`, `LC074`, `LC075`, `LC076`
 
 ---
 
@@ -321,6 +321,59 @@ study = optuna.create_study(direction="maximize", sampler=sampler)
 If you use `RandomSampler`, `CmaEsSampler`, `NSGAIISampler`, or another stochastic Optuna sampler, pass a documented seed there too.
 
 Related checks: `LC060`
+
+---
+
+## Gradient boosting framework seeds
+
+Fragile pattern:
+
+```python
+import lightgbm as lgb
+from catboost import CatBoostClassifier
+
+lgb_model = lgb.LGBMClassifier()
+cat_model = CatBoostClassifier(iterations=200)
+```
+
+LightGBM and CatBoost can use stochastic training paths even when the surrounding notebook sets Python or NumPy seeds.
+
+Better pattern:
+
+```python
+SEED = 42
+lgb_model = lgb.LGBMClassifier(random_state=SEED)
+cat_model = CatBoostClassifier(iterations=200, random_seed=SEED)
+```
+
+For `lgb.train(...)`, put the seed in the params dictionary so the training call carries its own reproducibility contract.
+
+Related checks: `LC074`, `LC075`
+
+---
+
+## Keras shuffled data sources
+
+Fragile pattern:
+
+```python
+import tensorflow as tf
+
+train = tf.keras.utils.image_dataset_from_directory("images/train")
+```
+
+Directory datasets and generator flows shuffle by default. A global TensorFlow seed is useful, but a visible loader seed makes the input order contract local to the data source.
+
+Better pattern:
+
+```python
+SEED = 42
+train = tf.keras.utils.image_dataset_from_directory("images/train", seed=SEED)
+```
+
+If order is intentional, say so in code with `shuffle=False`.
+
+Related checks: `LC076`
 
 ---
 
@@ -500,7 +553,34 @@ output_dir.mkdir(parents=True, exist_ok=True)
 metrics.to_csv(output_dir / "metrics.csv")
 ```
 
-Related checks: `LC009`, `LC035`, `LC037`
+Related checks: `LC009`, `LC035`, `LC037`, `LC077`
+
+---
+
+## Output artifacts without provenance notes
+
+Fragile pattern:
+
+```text
+results/
+  metrics.csv
+  confusion_matrix.png
+```
+
+The files may be useful, but a reviewer cannot tell which command, inputs, code revision, or seed produced them.
+
+Better pattern:
+
+```text
+results/
+  README.md
+  metrics.csv
+  confusion_matrix.png
+```
+
+The README or a `*.provenance.json` sidecar should say how the result was generated and what inputs or source revision it depends on.
+
+Related checks: `LC009`, `LC035`, `LC037`, `LC077`
 
 ---
 

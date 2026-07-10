@@ -159,6 +159,10 @@ Noise is normal in old notebooks, teaching repos, generated examples, and archiv
 Use `.labcheck.toml` to exclude paths that are not part of the supported rerun surface:
 
 ```toml
+# Use "education" for large teaching/tutorial repos where repeated notebook
+# state findings need gentler defaults.
+profile = "default"
+
 exclude = [
   "archive/**",
   "notebooks/generated/**",
@@ -169,6 +173,12 @@ exclude = [
 check_id = "LC010"
 path = "archive/old_experiment.py"
 reason = "Archival script kept for context, not a supported rerun path."
+
+[severity_overrides]
+# LC002 = "medium"
+
+[finding_limits]
+# LC010 = 25
 ```
 
 When a finding is expected, say why in maintainer-facing language before suppressing it:

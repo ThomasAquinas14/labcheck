@@ -19,9 +19,10 @@ The goal is to become the easiest way to answer one practical question:
 These are the current launch-week priorities.
 
 - Continue reducing false positives around tutorial notebooks and notebook-specific syntax.
+- Refine the `profile = "education"` defaults with real course/lab fixtures.
 - Add more public case studies with concise, fair interpretation.
 - Improve GitHub Action marketplace polish and example workflow copy.
-- Expand runtime checks for Conda edge cases, Docker edge cases, remote data snapshots, inline notebook installs, DVC/Git LFS restore steps, and common lab setup files.
+- Expand runtime checks for Conda edge cases, Docker edge cases, remote data snapshots, inline notebook installs, DVC/Git LFS restore steps, framework-specific seeds, and common lab setup files.
 - Improve browser demo copy for folder uploads and sample repo walkthroughs.
 - Keep the release gate fast enough that contributors actually run it.
 
@@ -30,10 +31,10 @@ These are the current launch-week priorities.
 These are useful once the public repo has early users and issue reports.
 
 - Expand DVC, Git LFS, and data-versioning hints beyond restore-command documentation.
-- Add richer checks for generated figures and result provenance beyond globbed inputs, unsorted file discovery, timestamped outputs, missing output directories, and orphan outputs.
+- Deepen generated-figure and result provenance beyond the current output-directory provenance note, checksum/sidecar, orphan-output, timestamp, glob, and write-path checks.
 - Add optional Jupyter/VS Code integration experiments.
 - Improve baseline workflows for teams that want to ratchet score over time.
-- Add more framework-specific determinism checks beyond NumPy Generator seeds, PyTorch random_split/DataLoader/backend/worker drift, TensorFlow seeds, XGBoost estimator seeds, Optuna sampler seeds, JAX PRNG key reuse, and Polars sampling seeds.
+- Add more framework-specific determinism checks beyond NumPy Generator seeds, PyTorch random_split/DataLoader/backend/worker drift, TensorFlow seeds, XGBoost/LightGBM/CatBoost estimator seeds, Keras shuffled data sources, Optuna sampler seeds, JAX PRNG key reuse, and Polars sampling seeds.
 - Publish a small gallery of good and bad reproducibility patterns.
 
 ## Later

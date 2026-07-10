@@ -18,6 +18,7 @@ from labcheck.checks import (
     check_inline_command_missing_paths,
     check_inline_system_package_installs,
     check_interactive_prompts,
+    check_missing_catboost_seed,
     check_missing_local_dependency_paths,
     check_missing_dependency_setup_instructions,
     check_missing_data_versioning_restore_steps,
@@ -27,6 +28,8 @@ from labcheck.checks import (
     check_missing_output_directories,
     check_missing_requirement_include_files,
     check_missing_local_module_imports,
+    check_missing_keras_dataset_seed,
+    check_missing_lightgbm_seed,
     check_notebook_inline_unpinned_installs,
     check_missing_globbed_input_paths,
     check_mutable_remote_input_artifacts,
@@ -40,6 +43,7 @@ from labcheck.checks import (
     check_missing_tensorflow_seed,
     check_missing_xgboost_random_state,
     check_orphan_output_artifacts,
+    check_output_directory_missing_provenance,
     check_python_hash_usage,
     check_pytorch_deterministic_backend,
     check_reused_jax_prng_key,
@@ -331,6 +335,52 @@ def test_scan_config_ignored_findings_support_path_patterns(tmp_path: Path) -> N
 
     assert not any(finding.check_id == "LC007" and finding.file_path == "archive/old.py" for finding in report.findings)
     assert any(finding.check_id == "LC007" and finding.file_path == "active/live.py" for finding in report.findings)
+
+
+def test_scan_config_can_override_finding_severity(tmp_path: Path) -> None:
+    config_path = tmp_path / "custom.toml"
+    config_path.write_text('[severity_overrides]\nLC007 = "low"\n', encoding="utf-8")
+    (tmp_path / "analysis.py").write_text("import random\nvalue = random.random()\n", encoding="utf-8")
+
+    report = scan_path(str(tmp_path), config_path=str(config_path))
+    finding = next(finding for finding in report.findings if finding.check_id == "LC007")
+
+    assert finding.severity == "low"
+
+
+def test_scan_config_can_limit_repeated_findings_per_check(tmp_path: Path) -> None:
+    config_path = tmp_path / "custom.toml"
+    config_path.write_text("[finding_limits]\nLC007 = 1\n", encoding="utf-8")
+    for index in range(3):
+        (tmp_path / f"analysis_{index}.py").write_text(
+            "import random\nvalue = random.random()\n",
+            encoding="utf-8",
+        )
+
+    report = scan_path(str(tmp_path), config_path=str(config_path))
+
+    assert sum(finding.check_id == "LC007" for finding in report.findings) == 1
+
+
+def test_scan_education_profile_caps_tutorial_corpus_noise(tmp_path: Path) -> None:
+    (tmp_path / ".labcheck.toml").write_text('profile = "education"\n', encoding="utf-8")
+    (tmp_path / ".python-version").write_text("3.11\n", encoding="utf-8")
+    (tmp_path / "requirements.txt").write_text("numpy==2.0.0\n", encoding="utf-8")
+    data_dir = tmp_path / "data"
+    output_dir = tmp_path / "outputs"
+    data_dir.mkdir()
+    output_dir.mkdir()
+    (data_dir / "train.csv").write_text("value\n1\n", encoding="utf-8")
+    (tmp_path / "driver.py").write_text(
+        "import pandas as pd\ndf = pd.read_csv('data/train.csv')\ndf.to_csv('outputs/report.csv')\n",
+        encoding="utf-8",
+    )
+    for index in range(30):
+        (tmp_path / f"lesson_{index}.py").write_text("print('lesson')\n", encoding="utf-8")
+
+    report = scan_path(str(tmp_path))
+
+    assert sum(finding.check_id == "LC010" for finding in report.findings) == 25
 
 
 def test_scan_flags_missing_python_runtime_for_runnable_repo(tmp_path: Path) -> None:
@@ -5395,6 +5445,42 @@ def test_scan_rejects_invalid_disabled_checks_config(tmp_path: Path) -> None:
         raise AssertionError("Expected invalid disabled_checks config to fail")
 
 
+def test_scan_rejects_invalid_profile_config(tmp_path: Path) -> None:
+    config_path = tmp_path / "custom.toml"
+    config_path.write_text('profile = "noisy"\n', encoding="utf-8")
+
+    try:
+        scan_path(str(tmp_path), config_path=str(config_path))
+    except ValueError as exc:
+        assert "profile must be one of default or education" in str(exc)
+    else:
+        raise AssertionError("Expected invalid profile config to fail")
+
+
+def test_scan_rejects_invalid_finding_limits_config(tmp_path: Path) -> None:
+    config_path = tmp_path / "custom.toml"
+    config_path.write_text("[finding_limits]\nLC007 = 0\n", encoding="utf-8")
+
+    try:
+        scan_path(str(tmp_path), config_path=str(config_path))
+    except ValueError as exc:
+        assert "finding_limits values must be positive integers" in str(exc)
+    else:
+        raise AssertionError("Expected invalid finding_limits config to fail")
+
+
+def test_scan_rejects_invalid_severity_overrides_config(tmp_path: Path) -> None:
+    config_path = tmp_path / "custom.toml"
+    config_path.write_text('[severity_overrides]\nLC007 = "urgent"\n', encoding="utf-8")
+
+    try:
+        scan_path(str(tmp_path), config_path=str(config_path))
+    except ValueError as exc:
+        assert "severity_overrides values must be one of high, medium, or low" in str(exc)
+    else:
+        raise AssertionError("Expected invalid severity_overrides config to fail")
+
+
 def test_scan_rejects_invalid_ignored_findings_config(tmp_path: Path) -> None:
     config_path = tmp_path / "custom.toml"
     config_path.write_text('[[ignored_findings]]\ncheck_id = "LC010"\n', encoding="utf-8")
@@ -7604,6 +7690,45 @@ def test_scan_flags_orphan_output_artifact(tmp_path: Path) -> None:
     assert any(finding.check_id == "LC009" for finding in report.findings)
 
 
+def test_output_directory_provenance_check_flags_unexplained_results(tmp_path: Path) -> None:
+    output_dir = tmp_path / "outputs"
+    output_dir.mkdir()
+    report_path = output_dir / "report.csv"
+    figure_path = output_dir / "figure.png"
+    report_path.write_text("value\n1\n", encoding="utf-8")
+    figure_path.write_bytes(b"png")
+
+    findings = check_output_directory_missing_provenance(tmp_path, [report_path, figure_path])
+
+    assert len(findings) == 1
+    assert findings[0].check_id == "LC077"
+    assert findings[0].file_path == "outputs"
+    assert "report.csv" in findings[0].evidence
+    assert "figure.png" in findings[0].evidence
+
+
+def test_output_directory_provenance_check_accepts_readme_or_sidecar(tmp_path: Path) -> None:
+    output_dir = tmp_path / "outputs"
+    output_dir.mkdir()
+    report_path = output_dir / "report.csv"
+    report_path.write_text("value\n1\n", encoding="utf-8")
+    (output_dir / "README.md").write_text("Generated by python analysis.py\n", encoding="utf-8")
+
+    assert check_output_directory_missing_provenance(tmp_path, [report_path, output_dir / "README.md"]) == []
+
+
+def test_scan_flags_output_directory_without_provenance(tmp_path: Path) -> None:
+    output_dir = tmp_path / "results"
+    output_dir.mkdir()
+    (output_dir / "metrics.csv").write_text("metric,value\naccuracy,0.9\n", encoding="utf-8")
+    (tmp_path / "analysis.py").write_text("print('ready')\n", encoding="utf-8")
+    (tmp_path / "requirements.txt").write_text("pandas==2.2.2\n", encoding="utf-8")
+
+    report = scan_path(str(tmp_path))
+
+    assert any(finding.check_id == "LC077" and finding.file_path == "results" for finding in report.findings)
+
+
 def test_sklearn_random_state_check_flags_seedless_split_and_model(tmp_path: Path) -> None:
     source_path = tmp_path / "train.py"
     source_path.write_text(
@@ -8595,6 +8720,229 @@ model = XGBRegressor(colsample_bytree=0.8)
     assert finding.severity == "medium"
     assert finding.category == "determinism"
     assert "XGBRegressor" in finding.evidence
+
+
+def test_lightgbm_seed_check_flags_seedless_estimator_and_train(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_lgbm.py"
+    source_path.write_text(
+        """
+import lightgbm as lgb
+from lightgbm import LGBMClassifier
+
+model = LGBMClassifier(n_estimators=100)
+booster = lgb.train({"objective": "binary"}, train_set)
+seeded = lgb.LGBMRegressor(random_state=42)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    findings = check_missing_lightgbm_seed(tmp_path, [artifact])
+
+    assert len(findings) == 1
+    assert findings[0].check_id == "LC074"
+    assert "LGBMClassifier" in findings[0].evidence
+    assert "lgb.train" in findings[0].evidence
+
+
+def test_lightgbm_seed_check_accepts_seeded_params(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_lgbm.py"
+    source_path.write_text(
+        """
+import lightgbm as lgb
+
+params = {"objective": "binary", "seed": 42}
+model = lgb.LGBMRegressor(bagging_seed=42)
+booster = lgb.train(params, train_set)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    assert check_missing_lightgbm_seed(tmp_path, [artifact]) == []
+
+
+def test_catboost_seed_check_flags_seedless_estimator(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_cat.py"
+    source_path.write_text(
+        """
+import catboost as cb
+from catboost import CatBoostClassifier
+
+model = CatBoostClassifier(iterations=100)
+ranker = cb.CatBoostRanker(depth=6)
+seeded = cb.CatBoostRegressor(random_seed=42)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    findings = check_missing_catboost_seed(tmp_path, [artifact])
+
+    assert len(findings) == 1
+    assert findings[0].check_id == "LC075"
+    assert "CatBoostClassifier" in findings[0].evidence
+    assert "cb.CatBoostRanker" in findings[0].evidence
+
+
+def test_catboost_seed_check_accepts_seeded_estimator(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_cat.py"
+    source_path.write_text(
+        """
+from catboost import CatBoostClassifier, CatBoostRegressor
+
+classifier = CatBoostClassifier(random_seed=42)
+regressor = CatBoostRegressor(random_state=7)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    assert check_missing_catboost_seed(tmp_path, [artifact]) == []
+
+
+def test_keras_dataset_seed_check_flags_seedless_shuffle_sources(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_keras.py"
+    source_path.write_text(
+        """
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+dataset = tf.keras.utils.image_dataset_from_directory("images/train")
+generator = ImageDataGenerator()
+batches = generator.flow_from_directory("images/train")
+seeded = tf.keras.utils.image_dataset_from_directory("images/valid", seed=42)
+ordered = generator.flow_from_directory("images/test", shuffle=False)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    findings = check_missing_keras_dataset_seed(tmp_path, [artifact])
+
+    assert len(findings) == 1
+    assert findings[0].check_id == "LC076"
+    assert "image_dataset_from_directory" in findings[0].evidence
+    assert "flow_from_directory" in findings[0].evidence
+
+
+def test_keras_dataset_seed_check_accepts_seeded_or_ordered_calls(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_keras.py"
+    source_path.write_text(
+        """
+from keras.utils import image_dataset_from_directory
+from keras.preprocessing.image import ImageDataGenerator
+
+dataset = image_dataset_from_directory("images/train", seed=42)
+generator = ImageDataGenerator()
+batches = generator.flow_from_dataframe(frame, seed=42)
+ordered = generator.flow(x, y, shuffle=False)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    assert check_missing_keras_dataset_seed(tmp_path, [artifact]) == []
+
+
+def test_keras_dataset_seed_check_handles_utils_alias(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_keras.py"
+    source_path.write_text(
+        """
+from tensorflow.keras import utils as keras_utils
+
+dataset = keras_utils.image_dataset_from_directory("images/train")
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    findings = check_missing_keras_dataset_seed(tmp_path, [artifact])
+
+    assert len(findings) == 1
+    assert findings[0].check_id == "LC076"
+
+
+def test_scan_flags_new_framework_seed_gaps(tmp_path: Path) -> None:
+    (tmp_path / ".python-version").write_text("3.11\n", encoding="utf-8")
+    (tmp_path / "requirements.txt").write_text(
+        "lightgbm==4.5.0\ncatboost==1.2.7\ntensorflow==2.16.1\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "README.md").write_text("```bash\npython train.py\n```\n", encoding="utf-8")
+    (tmp_path / "train.py").write_text(
+        """
+import catboost as cb
+import lightgbm as lgb
+import tensorflow as tf
+
+lgb_model = lgb.LGBMClassifier()
+cat_model = cb.CatBoostClassifier()
+dataset = tf.keras.utils.image_dataset_from_directory("images/train")
+""",
+        encoding="utf-8",
+    )
+
+    report = scan_path(str(tmp_path))
+    found = {finding.check_id for finding in report.findings}
+
+    assert {"LC074", "LC075", "LC076"}.issubset(found)
 
 
 def test_optuna_sampler_seed_check_flags_default_create_study(tmp_path: Path) -> None:

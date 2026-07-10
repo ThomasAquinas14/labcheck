@@ -595,6 +595,12 @@ def test_landing_page_links_adoption_pack() -> None:
     assert "LC060" in landing
     assert "JAX PRNG key reuse" in landing
     assert "LC061" in landing
+    assert "LightGBM seed drift" in landing
+    assert "LC074" in landing
+    assert "CatBoost seed drift" in landing
+    assert "LC075" in landing
+    assert "Keras data shuffle drift" in landing
+    assert "LC076" in landing
     assert "Dead docs link" in landing
     assert "LC062" in landing
     assert "Missing license metadata" in landing
@@ -629,6 +635,8 @@ def test_landing_page_links_adoption_pack() -> None:
     assert "LC036" in landing
     assert "Timestamped output paths" in landing
     assert "LC037" in landing
+    assert "Output provenance gap" in landing
+    assert "LC077" in landing
     assert "Unsorted file discovery" in landing
     assert "LC038" in landing
     assert "audience-specific target-fit card for professor/founder/maintainer outreach" in landing

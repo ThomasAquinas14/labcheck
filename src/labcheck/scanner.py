@@ -9,6 +9,7 @@ from .checks import (
     check_ci_workflow_drift,
     check_conflicting_python_runtime,
     check_current_time_usage,
+    check_missing_catboost_seed,
     check_dockerfile_missing_dependency_install,
     check_floating_docker_base_images,
     check_floating_github_action_refs,
@@ -24,6 +25,8 @@ from .checks import (
     check_missing_output_directories,
     check_missing_requirement_include_files,
     check_missing_dependency_setup_instructions,
+    check_missing_keras_dataset_seed,
+    check_missing_lightgbm_seed,
     check_missing_docker_compose_depends_on_services,
     check_missing_docker_compose_build_paths,
     check_missing_docker_compose_develop_watch_paths,
@@ -63,6 +66,7 @@ from .checks import (
     check_missing_sklearn_random_state,
     check_missing_tensorflow_seed,
     check_missing_xgboost_random_state,
+    check_output_directory_missing_provenance,
     check_saved_notebook_errors,
     check_readme_drift,
     check_remote_download_without_timeout,
@@ -78,7 +82,15 @@ from .checks import (
     check_undocumented_environment_variables,
     check_working_directory_changes,
 )
-from .config import LabcheckConfig, discover_config, is_check_disabled, is_excluded, is_finding_ignored
+from .config import (
+    LabcheckConfig,
+    discover_config,
+    effective_finding_limits,
+    effective_severity_overrides,
+    is_check_disabled,
+    is_excluded,
+    is_finding_ignored,
+)
 from .graph import build_provenance_graph
 from .loaders import prepared_target
 from .models import Finding, Report, ScanSummary, ScoreCard
@@ -154,14 +166,37 @@ def score_findings(findings: list[Finding]) -> ScoreCard:
 
 
 def _filter_configured_findings(findings: list[Finding], config: LabcheckConfig) -> list[Finding]:
-    if not config.disabled_checks and not config.ignored_findings:
-        return findings
-    return [
+    filtered = [
         finding
         for finding in findings
         if not is_check_disabled(finding.check_id, config)
         and not is_finding_ignored(finding.check_id, finding.file_path, config)
     ]
+
+    severity_overrides = effective_severity_overrides(config)
+    if severity_overrides:
+        for finding in filtered:
+            override = severity_overrides.get(finding.check_id)
+            if override:
+                finding.severity = override
+
+    finding_limits = effective_finding_limits(config)
+    if not finding_limits:
+        return filtered
+
+    limited: list[Finding] = []
+    counts: dict[str, int] = {}
+    for finding in filtered:
+        limit = finding_limits.get(finding.check_id)
+        if limit is None:
+            limited.append(finding)
+            continue
+        count = counts.get(finding.check_id, 0)
+        if count >= limit:
+            continue
+        counts[finding.check_id] = count + 1
+        limited.append(finding)
+    return limited
 
 
 def scan_path(target: str, config_path: str | None = None) -> Report:
@@ -235,6 +270,7 @@ def scan_path(target: str, config_path: str | None = None) -> Report:
         findings.extend(check_timestamped_output_paths(repo_root, source_artifacts))
         findings.extend(check_current_time_usage(repo_root, source_artifacts))
         findings.extend(check_orphan_output_artifacts(repo_root, files, source_artifacts))
+        findings.extend(check_output_directory_missing_provenance(repo_root, files))
         findings.extend(check_unsorted_file_discovery_order(repo_root, source_artifacts))
         findings.extend(check_set_derived_order(repo_root, source_artifacts))
         findings.extend(check_python_hash_usage(repo_root, source_artifacts))
@@ -249,6 +285,9 @@ def scan_path(target: str, config_path: str | None = None) -> Report:
         findings.extend(check_missing_pytorch_dataloader_worker_init(repo_root, source_artifacts))
         findings.extend(check_pytorch_deterministic_backend(repo_root, source_artifacts))
         findings.extend(check_missing_xgboost_random_state(repo_root, source_artifacts))
+        findings.extend(check_missing_lightgbm_seed(repo_root, source_artifacts))
+        findings.extend(check_missing_catboost_seed(repo_root, source_artifacts))
+        findings.extend(check_missing_keras_dataset_seed(repo_root, source_artifacts))
         findings.extend(check_missing_optuna_sampler_seed(repo_root, source_artifacts))
         findings.extend(check_reused_jax_prng_key(repo_root, source_artifacts))
         findings.extend(check_readme_drift(repo_root, readme_references))

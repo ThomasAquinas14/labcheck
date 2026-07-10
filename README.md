@@ -191,7 +191,11 @@ repo to a reviewer, student, or new engineer.
 - `LC060` Optuna studies/samplers missing a seeded sampler
 - `LC061` JAX random calls that reuse the same PRNG key without a visible split
 - `LC034` Polars sampling/shuffle calls missing `seed`
+- `LC074` LightGBM estimators and `lgb.train(...)` params missing visible seeds
+- `LC075` CatBoost estimators missing `random_seed` or `random_state`
+- `LC076` Keras shuffled dataset/generator calls missing `seed`
 - `LC035` generated output directories missing before save/write calls
+- `LC077` output/result/figure directories missing provenance notes or sidecars
 - `LC036` glob/listdir input directories missing from the repo
 - `LC037` timestamp-derived generated output filenames
 - `LC055` current date/time calls used in workflow logic
@@ -416,6 +420,10 @@ The Action exposes outputs such as `${{ steps.labcheck.outputs.overall-score }}`
 If a repo has archived experiments, generated notebooks, checkpoints, or other intentional noise, add a `.labcheck.toml` file:
 
 ```toml
+# Optional: use "education" for large course/tutorial repos. It downgrades the
+# noisiest notebook-state checks and caps repeated tutorial-corpus findings.
+profile = "default"
+
 exclude = [
   "archive/**",
   "labcheck-audit/**",
@@ -434,6 +442,14 @@ disabled_checks = [
 check_id = "LC010"
 path = "archive/old_experiment.py"
 reason = "Archival script kept for context, not a supported rerun path."
+
+# Optional per-check severity and volume controls. Explicit values override
+# profile defaults.
+[severity_overrides]
+# LC002 = "medium"
+
+[finding_limits]
+# LC010 = 25
 ```
 
 The CLI discovers this file automatically for local folder scans. In GitHub Actions, pass `config-path: .labcheck.toml` to make the exclusion policy explicit.
@@ -578,7 +594,11 @@ This repository is an early but real prototype:
 - `LC060` Optuna seeded sampler detection
 - `LC061` JAX PRNG key reuse detection
 - `LC034` Polars sample/shuffle seed detection
+- `LC074` LightGBM seed detection
+- `LC075` CatBoost seed detection
+- `LC076` Keras dataset/generator seed detection
 - `LC035` generated output directory existence detection
+- `LC077` generated output provenance-note detection
 - `LC036` glob/listdir input directory detection
 - `LC037` timestamped output path detection
 - `LC055` current date/time workflow logic detection
@@ -591,11 +611,11 @@ This repository is an early but real prototype:
 - public case studies on real repos
 - a narrow, credible product wedge
 
-What is still missing:
+Recently moved from future work into core:
 
-- more framework-specific checks beyond notebook install, NumPy Generator seeds, sklearn, pandas, PyTorch split/DataLoader/backend/worker drift, TensorFlow seed drift, XGBoost/Optuna/JAX seed drift, and Polars sampling drift
-- richer lineage extraction beyond globbed inputs, unsorted file discovery, timestamped outputs, missing output directories, and orphan outputs
-- better noise control for large educational notebook corpora
+- more framework-specific determinism checks: LightGBM, CatBoost, and Keras shuffled dataset/generator seed drift now have dedicated checks
+- richer generated-result provenance: output/result/figure/model directories now get a directory-level provenance-note check, complementing orphan-output and write-path checks
+- better noise control for large educational notebook corpora: `.labcheck.toml` now supports `profile = "education"`, `severity_overrides`, and `finding_limits`
 
 ---
 
@@ -606,7 +626,7 @@ See the fuller public roadmap in [docs/roadmap.md](docs/roadmap.md).
 Near-term:
 
 - richer notebook hidden-state analysis
-- more framework-specific determinism checks beyond NumPy/sklearn/pandas/PyTorch/TensorFlow/XGBoost/Optuna/JAX/Polars drift
+- more framework-specific determinism checks driven by real user fixtures beyond the current NumPy/sklearn/pandas/PyTorch/TensorFlow/XGBoost/Optuna/JAX/Polars/LightGBM/CatBoost/Keras coverage
 - richer data-versioning guidance beyond DVC and Git LFS
 - more public case studies with cleaner summaries
 - GitHub Action marketplace polish

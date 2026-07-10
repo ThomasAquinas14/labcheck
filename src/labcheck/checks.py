@@ -3974,6 +3974,65 @@ def check_orphan_output_artifacts(root: Path, files: list[Path], artifacts: list
     return findings
 
 
+PROVENANCE_DIRECTORY_FILE_NAMES = {
+    "manifest.json",
+    "manifest.md",
+    "metadata.json",
+    "provenance.json",
+    "readme.md",
+    "readme.txt",
+}
+
+PROVENANCE_SIDECAR_SUFFIXES = (
+    ".meta.json",
+    ".metadata.json",
+    ".provenance.json",
+    ".sha256",
+    ".sha512",
+)
+
+
+def _is_output_provenance_marker(path: Path) -> bool:
+    name = path.name.lower()
+    return name in PROVENANCE_DIRECTORY_FILE_NAMES or any(name.endswith(suffix) for suffix in PROVENANCE_SIDECAR_SUFFIXES)
+
+
+def _directory_has_provenance_marker(directory: Path) -> bool:
+    try:
+        children = list(directory.iterdir())
+    except OSError:
+        return False
+    return any(child.is_file() and _is_output_provenance_marker(child) for child in children)
+
+
+def check_output_directory_missing_provenance(root: Path, files: list[Path]) -> list[Finding]:
+    artifact_dirs: dict[Path, list[Path]] = {}
+    for path in sorted(files):
+        if _is_output_provenance_marker(path) or not _is_likely_output_artifact(path, root):
+            continue
+        artifact_dirs.setdefault(path.parent, []).append(path)
+
+    findings: list[Finding] = []
+    for directory, artifacts in sorted(artifact_dirs.items()):
+        if _directory_has_provenance_marker(directory):
+            continue
+        relative_dir = _relative_posix(directory, root)
+        examples = ", ".join(_relative_posix(path, directory) for path in artifacts[:5])
+        findings.append(
+            Finding(
+                check_id="LC077",
+                title="Output directory lacks provenance note",
+                severity="low",
+                category="artifacts",
+                file_path=relative_dir,
+                evidence=f"'{relative_dir}' contains generated-looking artifact(s) ({examples}) but no README, MANIFEST, metadata, checksum, or provenance sidecar.",
+                why_it_matters="Generated figures, reports, and model outputs are easier to trust when the repo records what command, inputs, code revision, or run produced them.",
+                suggested_fix="Add a README.md, MANIFEST.md/json, checksum, or per-artifact *.provenance.json sidecar that documents how to regenerate or verify the artifacts in this directory.",
+            )
+        )
+    return findings
+
+
 def check_missing_seed(root: Path, artifacts: list[SourceArtifact]) -> list[Finding]:
     findings: list[Finding] = []
     for artifact in artifacts:
@@ -4616,6 +4675,46 @@ XGBOOST_ESTIMATOR_CALLS = {
     "XGBRFRegressor",
 }
 
+LIGHTGBM_ESTIMATOR_CALLS = {
+    "LGBMClassifier",
+    "LGBMRanker",
+    "LGBMRegressor",
+}
+
+LIGHTGBM_SEED_KEYWORDS = {
+    "bagging_seed",
+    "data_random_seed",
+    "drop_seed",
+    "extra_seed",
+    "feature_fraction_seed",
+    "random_state",
+    "seed",
+}
+
+CATBOOST_ESTIMATOR_CALLS = {
+    "CatBoost",
+    "CatBoostClassifier",
+    "CatBoostRanker",
+    "CatBoostRegressor",
+}
+
+CATBOOST_SEED_KEYWORDS = {
+    "random_seed",
+    "random_state",
+}
+
+KERAS_IMAGE_DATASET_CALLS = {
+    "image_dataset_from_directory",
+    "text_dataset_from_directory",
+    "timeseries_dataset_from_array",
+}
+
+KERAS_GENERATOR_FLOW_CALLS = {
+    "flow",
+    "flow_from_dataframe",
+    "flow_from_directory",
+}
+
 OPTUNA_SAMPLER_CALLS = {
     "CmaEsSampler",
     "NSGAIISampler",
@@ -4678,6 +4777,24 @@ def _assigned_target_names(target: ast.AST) -> set[str]:
 def _call_has_non_none_keyword(call: ast.Call, keyword_name: str) -> bool:
     value = _keyword_value(call, keyword_name)
     return value is not None and not _is_none_literal(value)
+
+
+def _call_has_any_keyword(call: ast.Call, keyword_names: set[str]) -> bool:
+    return any(keyword.arg in keyword_names for keyword in call.keywords)
+
+
+def _dict_has_any_key(node: ast.AST, key_names: set[str]) -> bool:
+    if not isinstance(node, ast.Dict):
+        return False
+    return any(isinstance(key, ast.Constant) and key.value in key_names for key in node.keys)
+
+
+def _keyword_is_false(call: ast.Call, keyword_name: str) -> bool:
+    for keyword in call.keywords:
+        if keyword.arg != keyword_name:
+            continue
+        return isinstance(keyword.value, ast.Constant) and keyword.value.value is False
+    return False
 
 
 def _optuna_imports(tree: ast.AST, source: str) -> tuple[set[str], set[str], set[str], set[str]]:
@@ -5087,6 +5204,225 @@ def _xgboost_random_state_issues(source: str) -> list[str]:
     return issues
 
 
+def _lightgbm_imports(tree: ast.AST, source: str) -> tuple[set[str], set[str], set[str]]:
+    module_aliases: set[str] = set()
+    direct_estimator_names: set[str] = set()
+    direct_train_names: set[str] = set()
+    if re.search(r"\blightgbm\.", source):
+        module_aliases.add("lightgbm")
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in {"lightgbm", "lightgbm.sklearn"}:
+                    module_aliases.add(alias.asname or alias.name.split(".", 1)[0])
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if module in {"lightgbm", "lightgbm.sklearn"}:
+                for alias in node.names:
+                    if alias.name in LIGHTGBM_ESTIMATOR_CALLS:
+                        direct_estimator_names.add(alias.asname or alias.name)
+                    elif alias.name == "train":
+                        direct_train_names.add(alias.asname or alias.name)
+    return module_aliases, direct_estimator_names, direct_train_names
+
+
+def _seeded_dict_assignment_names(tree: ast.AST, seed_keywords: set[str]) -> set[str]:
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)) or not _dict_has_any_key(node.value, seed_keywords):
+            continue
+        names.update(_assignment_target_names(node))
+    return names
+
+
+def _lightgbm_train_params_have_seed(call: ast.Call, seeded_dict_names: set[str]) -> bool:
+    params = _keyword_value(call, "params")
+    if params is None and call.args:
+        params = call.args[0]
+    if params is None:
+        return False
+    if _dict_has_any_key(params, LIGHTGBM_SEED_KEYWORDS):
+        return True
+    return isinstance(params, ast.Name) and params.id in seeded_dict_names
+
+
+def _lightgbm_seed_issues(source: str) -> list[str]:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+
+    module_aliases, direct_estimator_names, direct_train_names = _lightgbm_imports(tree, source)
+    if not module_aliases and not direct_estimator_names and not direct_train_names:
+        return []
+
+    seeded_dict_names = _seeded_dict_assignment_names(tree, LIGHTGBM_SEED_KEYWORDS)
+    issues: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        call_name = _call_name(node.func)
+        is_estimator = (
+            call_name in direct_estimator_names
+            or any(
+                call_name == f"{alias}.{estimator_name}"
+                for alias in module_aliases
+                for estimator_name in LIGHTGBM_ESTIMATOR_CALLS
+            )
+        )
+        is_train = call_name in direct_train_names or any(call_name == f"{alias}.train" for alias in module_aliases)
+        if is_estimator:
+            if _call_has_any_keyword(node, LIGHTGBM_SEED_KEYWORDS):
+                continue
+            issues.append(f"line {node.lineno}: {call_name}(...)")
+        elif is_train:
+            if _lightgbm_train_params_have_seed(node, seeded_dict_names):
+                continue
+            issues.append(f"line {node.lineno}: {call_name}(...) without seeded params")
+    return issues
+
+
+def _catboost_imports(tree: ast.AST, source: str) -> tuple[set[str], set[str]]:
+    module_aliases: set[str] = set()
+    direct_estimator_names: set[str] = set()
+    if re.search(r"\bcatboost\.", source):
+        module_aliases.add("catboost")
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "catboost":
+                    module_aliases.add(alias.asname or "catboost")
+        elif isinstance(node, ast.ImportFrom) and node.module == "catboost":
+            for alias in node.names:
+                if alias.name in CATBOOST_ESTIMATOR_CALLS:
+                    direct_estimator_names.add(alias.asname or alias.name)
+    return module_aliases, direct_estimator_names
+
+
+def _catboost_seed_issues(source: str) -> list[str]:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+
+    module_aliases, direct_estimator_names = _catboost_imports(tree, source)
+    if not module_aliases and not direct_estimator_names:
+        return []
+
+    issues: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        call_name = _call_name(node.func)
+        is_estimator = (
+            call_name in direct_estimator_names
+            or any(
+                call_name == f"{alias}.{estimator_name}"
+                for alias in module_aliases
+                for estimator_name in CATBOOST_ESTIMATOR_CALLS
+            )
+        )
+        if not is_estimator or _call_has_any_keyword(node, CATBOOST_SEED_KEYWORDS):
+            continue
+        issues.append(f"line {node.lineno}: {call_name}(...)")
+    return issues
+
+
+def _keras_dataset_imports(tree: ast.AST, source: str) -> tuple[set[str], set[str], set[str], bool]:
+    tensorflow_aliases: set[str] = set()
+    keras_aliases: set[str] = set()
+    direct_dataset_names: set[str] = set()
+    has_image_generator_context = "ImageDataGenerator" in source
+    if re.search(r"\btensorflow\.", source):
+        tensorflow_aliases.add("tensorflow")
+    if re.search(r"\bkeras\.", source):
+        keras_aliases.add("keras")
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                local_name = alias.asname or alias.name.split(".", 1)[0]
+                if alias.name == "tensorflow":
+                    tensorflow_aliases.add(local_name)
+                elif alias.name in {"keras", "tensorflow.keras"}:
+                    keras_aliases.add(alias.asname or "keras")
+                elif alias.name in {"tensorflow.keras.preprocessing.image", "keras.preprocessing.image"}:
+                    has_image_generator_context = True
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if module == "tensorflow":
+                for alias in node.names:
+                    if alias.name == "keras":
+                        keras_aliases.add(alias.asname or alias.name)
+            elif module in {"tensorflow.keras", "keras"}:
+                for alias in node.names:
+                    if alias.name == "utils":
+                        keras_aliases.add(alias.asname or "keras")
+            elif module in {"tensorflow.keras.utils", "keras.utils"}:
+                for alias in node.names:
+                    if alias.name in KERAS_IMAGE_DATASET_CALLS:
+                        direct_dataset_names.add(alias.asname or alias.name)
+            elif module in {"tensorflow.keras.preprocessing.image", "keras.preprocessing.image"}:
+                has_image_generator_context = True
+    return tensorflow_aliases, keras_aliases, direct_dataset_names, has_image_generator_context
+
+
+def _is_keras_dataset_call(
+    call_name: str,
+    tensorflow_aliases: set[str],
+    keras_aliases: set[str],
+    direct_dataset_names: set[str],
+) -> bool:
+    short_name = call_name.rsplit(".", 1)[-1]
+    if call_name in direct_dataset_names:
+        return True
+    if short_name not in KERAS_IMAGE_DATASET_CALLS:
+        return False
+    return (
+        any(call_name == f"{alias}.keras.utils.{short_name}" for alias in tensorflow_aliases)
+        or any(call_name == f"{alias}.utils.{short_name}" for alias in keras_aliases)
+        or any(call_name == f"{alias}.{short_name}" for alias in keras_aliases)
+        or call_name == f"keras.utils.{short_name}"
+    )
+
+
+def _keras_shuffle_call_lacks_seed(call: ast.Call) -> bool:
+    if _keyword_is_false(call, "shuffle"):
+        return False
+    return not _call_has_non_none_keyword(call, "seed")
+
+
+def _keras_seed_issues(source: str) -> list[str]:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+
+    tensorflow_aliases, keras_aliases, direct_dataset_names, has_image_generator_context = _keras_dataset_imports(
+        tree,
+        source,
+    )
+    if not tensorflow_aliases and not keras_aliases and not direct_dataset_names and not has_image_generator_context:
+        return []
+
+    issues: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        call_name = _call_name(node.func)
+        if _is_keras_dataset_call(call_name, tensorflow_aliases, keras_aliases, direct_dataset_names):
+            if _keras_shuffle_call_lacks_seed(node):
+                issues.append(f"line {node.lineno}: {call_name}(...)")
+            continue
+        if not has_image_generator_context or not isinstance(node.func, ast.Attribute):
+            continue
+        if node.func.attr not in KERAS_GENERATOR_FLOW_CALLS:
+            continue
+        if _keras_shuffle_call_lacks_seed(node):
+            issues.append(f"line {node.lineno}: {call_name}(...)")
+    return issues
+
+
 def _polars_imports(tree: ast.AST) -> tuple[set[str], set[str]]:
     module_aliases: set[str] = set()
     direct_names: set[str] = set()
@@ -5256,6 +5592,72 @@ def check_missing_xgboost_random_state(root: Path, artifacts: list[SourceArtifac
                 evidence=f"Detected XGBoost estimators without random_state or seed: {examples}.",
                 why_it_matters="XGBoost estimators can produce drifting model fits when sampling, parallelism, or stochastic boosters are used without a documented seed.",
                 suggested_fix="Pass a documented random_state=... or seed=... value to XGBoost estimators used in reproducible workflows.",
+            )
+        )
+    return findings
+
+
+def check_missing_lightgbm_seed(root: Path, artifacts: list[SourceArtifact]) -> list[Finding]:
+    findings: list[Finding] = []
+    for artifact in artifacts:
+        issues = _lightgbm_seed_issues(artifact.content)
+        if not issues:
+            continue
+        examples = "; ".join(issues[:4])
+        findings.append(
+            Finding(
+                check_id="LC074",
+                title="LightGBM training lacks seed",
+                severity="medium",
+                category="determinism",
+                file_path=_relative_posix(artifact.path, root),
+                evidence=f"Detected LightGBM estimators/train calls without a visible seed: {examples}.",
+                why_it_matters="LightGBM can use sampling, feature fractioning, and parallel training paths that drift between runs unless the workflow pins the relevant seed values.",
+                suggested_fix="Pass random_state=... to LGBM estimators, or include seed/bagging_seed/feature_fraction_seed/data_random_seed in lgb.train params.",
+            )
+        )
+    return findings
+
+
+def check_missing_catboost_seed(root: Path, artifacts: list[SourceArtifact]) -> list[Finding]:
+    findings: list[Finding] = []
+    for artifact in artifacts:
+        issues = _catboost_seed_issues(artifact.content)
+        if not issues:
+            continue
+        examples = "; ".join(issues[:4])
+        findings.append(
+            Finding(
+                check_id="LC075",
+                title="CatBoost estimator lacks random_seed",
+                severity="medium",
+                category="determinism",
+                file_path=_relative_posix(artifact.path, root),
+                evidence=f"Detected CatBoost estimators without random_seed or random_state: {examples}.",
+                why_it_matters="CatBoost training can drift when bootstrapping, random strength, or ordered boosting paths run without a documented seed.",
+                suggested_fix="Pass a documented random_seed=... or random_state=... value to CatBoost estimators used in reproducible workflows.",
+            )
+        )
+    return findings
+
+
+def check_missing_keras_dataset_seed(root: Path, artifacts: list[SourceArtifact]) -> list[Finding]:
+    findings: list[Finding] = []
+    for artifact in artifacts:
+        issues = _keras_seed_issues(artifact.content)
+        if not issues:
+            continue
+        examples = "; ".join(issues[:4])
+        findings.append(
+            Finding(
+                check_id="LC076",
+                title="Keras data shuffle lacks seed",
+                severity="medium",
+                category="determinism",
+                file_path=_relative_posix(artifact.path, root),
+                evidence=f"Detected Keras shuffled dataset/generator calls without seed: {examples}.",
+                why_it_matters="Keras directory datasets and ImageDataGenerator flows shuffle inputs by default, so training and validation batches can drift even when TensorFlow's global seed is set.",
+                suggested_fix="Pass seed=... to image/text/timeseries dataset loaders and ImageDataGenerator flow calls, or set shuffle=False when order is intentional.",
             )
         )
     return findings

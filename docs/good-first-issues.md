@@ -13,7 +13,7 @@ Before opening a pull request:
 
 | Idea | Labels | Difficulty | Files to inspect | Acceptance criteria |
 | --- | --- | --- | --- | --- |
-| Reduce false positives for tutorial-style notebooks | `good first issue`, `notebooks`, `false-positive` | Medium | `src/labcheck/source_analysis.py`, `src/labcheck/scanner.py`, `tests/test_source_analysis.py` | A notebook that intentionally introduces examples out of order has a small fixture and either avoids noisy LC002 findings or documents why the finding is still useful. |
+| Refine the education profile with a real tutorial fixture | `good first issue`, `notebooks`, `false-positive` | Medium | `src/labcheck/config.py`, `src/labcheck/scanner.py`, `tests/test_scanner.py`, `tests/test_source_analysis.py` | A notebook or course folder that intentionally introduces examples out of order has a small fixture, and `profile = "education"` either reduces noisy LC001/LC002/LC010 output or documents why the finding is still useful. |
 
 ## Issue Template
 

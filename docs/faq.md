@@ -111,7 +111,7 @@ They are meant to answer:
 
 Some findings may be intentional. For example, a teaching repo might clear notebook outputs by policy, or a generated figure might be committed only for documentation.
 
-Use `.labcheck.toml` to exclude archived/generated paths or disable checks that are noisy for your repo.
+Use `.labcheck.toml` to select the education profile, cap repeated findings, exclude archived/generated paths, or disable checks that are noisy for your repo.
 
 For the score formula, score bands, and what a high score does not prove, see the [scoring guide](scoring-guide.md).
 
@@ -130,6 +130,10 @@ labcheck scan . --format markdown
 Then add a `.labcheck.toml` file for intentional noise:
 
 ```toml
+# Use "education" for large teaching/tutorial repos where repeated notebook
+# state findings need gentler defaults.
+profile = "default"
+
 exclude = [
   "archive/**",
   "notebooks/generated/**",
@@ -145,6 +149,12 @@ disabled_checks = [
 check_id = "LC010"
 path = "archive/old_experiment.py"
 reason = "Archival script kept for context, not a supported rerun path."
+
+[severity_overrides]
+# LC002 = "medium"
+
+[finding_limits]
+# LC010 = 25
 ```
 
 For CI, create a baseline first and then ratchet:

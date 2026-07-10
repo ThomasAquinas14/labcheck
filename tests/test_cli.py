@@ -771,7 +771,7 @@ def test_cli_doctor_reports_ready_for_existing_target(tmp_path, capsys) -> None:
     assert "OK   Python runtime:" in captured.out
     assert "OK   target:" in captured.out
     assert "OK   config:" in captured.out
-    assert "OK   checks registered: 73" in captured.out
+    assert "OK   checks registered: 77" in captured.out
     assert f"Next: labcheck scan {tmp_path} --config {config_path}" in captured.out
 
 
@@ -1000,6 +1000,10 @@ def test_cli_checks_command(capsys) -> None:
     assert "LC071" in captured.out
     assert "LC072" in captured.out
     assert "LC073" in captured.out
+    assert "LC074" in captured.out
+    assert "LC075" in captured.out
+    assert "LC076" in captured.out
+    assert "LC077" in captured.out
     assert "LC009" in captured.out
     assert "LC001" in captured.out
     assert "labcheck checks --category determinism" in captured.out
@@ -1014,8 +1018,16 @@ def test_cli_checks_command_filters_by_category(capsys) -> None:
     assert "Supported checks (category=determinism):" in captured.out
     assert "LC001" in captured.out
     assert "LC061" in captured.out
+    assert "LC074" in captured.out
+    assert "LC075" in captured.out
+    assert "LC076" in captured.out
     assert not any("LC003" in row for row in check_rows)
     assert not any("LC005" in row for row in check_rows)
+
+    artifacts_exit = main(["checks", "--category", "artifacts"])
+    artifacts = capsys.readouterr()
+    assert artifacts_exit == 0
+    assert "LC077" in artifacts.out
 
     onboarding_exit = main(["checks", "--category", "onboarding"])
     onboarding = capsys.readouterr()

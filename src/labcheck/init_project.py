@@ -6,6 +6,10 @@ from pathlib import Path
 
 CONFIG_TEMPLATE = """# labcheck configuration
 # Keep exclusions narrow so the audit still reflects the repo's real reproducibility.
+# Use "education" for large tutorial/course repos where repeated notebook-state
+# findings need gentler defaults and per-check caps.
+profile = "default"
+
 exclude = [
   ".ipynb_checkpoints/**",
   "labcheck-audit/**",
@@ -27,6 +31,14 @@ disabled_checks = [
 # check_id = "LC010"
 # path = "archive/old_experiment.py"
 # reason = "Archival script kept for context, not a supported rerun path."
+
+# Optional per-check severity and volume controls. Explicit values override
+# profile defaults.
+[severity_overrides]
+# LC002 = "medium"
+
+[finding_limits]
+# LC010 = 25
 """
 
 WORKFLOW_TEMPLATE = """name: labcheck

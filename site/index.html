@@ -590,6 +590,11 @@ labcheck scorecard labcheck-demo-repo</div>
         <p class="small"><strong>Evidence:</strong> Code writes <code>outputs/report_{timestamp}.csv</code>, making the expected artifact path change on every run.</p>
       </article>
       <article class="card">
+        <div class="tag low">LC077</div>
+        <h3>Output provenance gap</h3>
+        <p class="small"><strong>Evidence:</strong> An output/result/figure directory contains generated artifacts but no README, manifest, metadata, checksum, or provenance sidecar.</p>
+      </article>
+      <article class="card">
         <div class="tag medium">LC055</div>
         <h3>Clock-dependent logic</h3>
         <p class="small"><strong>Evidence:</strong> Code uses <code>date.today()</code> or <code>time.time()</code> inside workflow logic, so reruns can depend on the wall clock.</p>
@@ -738,6 +743,21 @@ labcheck scorecard labcheck-demo-repo</div>
         <div class="tag medium">LC034</div>
         <h3>Polars sampling drift</h3>
         <p class="small"><strong>Evidence:</strong> A Polars <code>sample()</code> or <code>shuffle()</code> call runs without <code>seed</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC074</div>
+        <h3>LightGBM seed drift</h3>
+        <p class="small"><strong>Evidence:</strong> A LightGBM estimator or <code>lgb.train(...)</code> call has no visible <code>random_state</code> or seeded params.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC075</div>
+        <h3>CatBoost seed drift</h3>
+        <p class="small"><strong>Evidence:</strong> A CatBoost estimator is constructed without <code>random_seed</code> or <code>random_state</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC076</div>
+        <h3>Keras data shuffle drift</h3>
+        <p class="small"><strong>Evidence:</strong> A Keras shuffled dataset or generator flow is created without <code>seed</code>.</p>
       </article>
       <article class="card">
         <div class="tag medium">LC013</div>

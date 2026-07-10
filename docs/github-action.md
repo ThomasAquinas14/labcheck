@@ -496,6 +496,10 @@ Available outputs:
 Create a `.labcheck.toml` file when a repo has archived experiments, generated notebooks, vendored examples, or teaching materials that should not affect the reproducibility score.
 
 ```toml
+# Use "education" for large teaching/tutorial repos where repeated notebook
+# state findings need gentler defaults.
+profile = "default"
+
 exclude = [
   "archive/**",
   "labcheck-audit/**",
@@ -514,6 +518,12 @@ disabled_checks = [
 check_id = "LC010"
 path = "archive/old_experiment.py"
 reason = "Archival script kept for context, not a supported rerun path."
+
+[severity_overrides]
+# LC002 = "medium"
+
+[finding_limits]
+# LC010 = 25
 ```
 
 The CLI discovers `.labcheck.toml` automatically when scanning a local folder. In CI, pass it explicitly with `config-path` so the Action behavior is obvious in workflow reviews:
