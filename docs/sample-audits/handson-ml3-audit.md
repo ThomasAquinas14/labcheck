@@ -4,6 +4,10 @@
 - Overall Score: **43**
 - Severity Mix: **9 high**, **14 medium**, **25 low**
 
+## Review Boundary
+
+This is a static, no-key first-pass audit. It does not execute the project code by default, does not upload source files to a hosted backend, and does not prove scientific validity; use it to prioritize rerun and handoff risks before deeper verification.
+
 ## Scores
 
 | Category | Score | What it means |
@@ -23,6 +27,14 @@
 | `LC004` Unpinned dependency | `medium` | 5 findings across 1 file | environment.yml: Dependency 'graphviz' in environment.yml does not pin a version. |
 | `LC006` Absolute machine-local path | `medium` | 5 findings across 5 files | 05_support_vector_machines.ipynb: Found path-like string '/Users/ageron/miniconda3/env'. |
 | `LC007` Randomness used without visible seeding | `medium` | 4 findings across 4 files | 11_training_deep_neural_networks.ipynb: Detected randomness-related APIs, but no obvious seed call in the same file. |
+
+## Understand Finding Codes
+
+Run these commands for plain-language context, why the finding matters, and the expected fix:
+
+- `labcheck explain LC005`
+- `labcheck explain LC002`
+- `labcheck explain LC004`
 
 ## Remediation Plan
 
@@ -46,6 +58,13 @@
    Suggested fix: Set and document seeds for the randomness sources used in this workflow.
    First evidence: `11_training_deep_neural_networks.ipynb` - Detected randomness-related APIs, but no obvious seed call in the same file.
 
+
+## Next Steps
+
+- Scorecard summary: `labcheck scorecard https://github.com/ageron/handson-ml3`
+- Sortable triage CSV: `labcheck scan https://github.com/ageron/handson-ml3 --format csv --output labcheck-findings.csv`
+- Shareable audit bundle: `labcheck pack https://github.com/ageron/handson-ml3 --output-dir labcheck-audit --zip`
+- Explain top finding: `labcheck explain LC005`
 
 ## Provenance Graph
 
@@ -157,7 +176,7 @@
 
 - Severity: `medium`
 - Category: `portability`
-- File: `docker\docker-compose.yml`
+- File: `docker/docker-compose.yml`
 - Evidence: Found path-like string '/home/devel/hand'.
 - Why it matters: Hardcoded local paths make the repo brittle on other machines and operating systems.
 - Suggested fix: Use project-relative paths, environment variables, or documented configuration.
@@ -166,7 +185,7 @@
 
 - Severity: `medium`
 - Category: `portability`
-- File: `docker\README.md`
+- File: `docker/README.md`
 - Evidence: Found path-like string '/home/devel/hand'.
 - Why it matters: Hardcoded local paths make the repo brittle on other machines and operating systems.
 - Suggested fix: Use project-relative paths, environment variables, or documented configuration.
@@ -499,7 +518,7 @@
 
 - Severity: `low`
 - Category: `onboarding`
-- File: `docker\jupyter_notebook_config.py`
+- File: `docker/jupyter_notebook_config.py`
 - Evidence: This analysis file has no visible input or output edges in the provenance graph.
 - Why it matters: Disconnected workflow files are hard for new contributors to place in the actual experiment pipeline.
 - Suggested fix: Document whether this file is archival, illustrative, or part of the real workflow, or connect it to visible inputs and outputs.

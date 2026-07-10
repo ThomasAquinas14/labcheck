@@ -48,4 +48,5 @@ Email the maintainer or use a private GitHub security advisory if available. Inc
 - Do not add public backend behavior as a default path.
 - Escape user-controlled content before rendering HTML.
 - Treat zip archives and filesystem paths as untrusted input.
+- Route GitHub Action inputs through environment variables before shell use.
 - Keep generated reports safe to open locally.

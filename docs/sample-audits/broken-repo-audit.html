@@ -41,6 +41,9 @@
     .severity-high .badge { background: #fee2e2; color: var(--danger); }
     .severity-medium .badge { background: #fef3c7; color: var(--warn); }
     .file { color: #5b6470; font-family: Consolas, monospace; }
+    code { background: #efe7d7; border-radius: 6px; font-family: Consolas, monospace; padding: 2px 5px; }
+    .next-steps { margin: 0; padding-left: 22px; }
+    .next-steps li { margin: 8px 0; }
     .graph-shell { background: linear-gradient(180deg, #fcfaf5, #f3ecdf); border: 1px solid var(--border); border-radius: 18px; padding: 14px; overflow: auto; }
     table { width: 100%; border-collapse: collapse; }
     th, td { border-top: 1px solid var(--border); text-align: left; padding: 12px 8px; }
@@ -52,13 +55,18 @@
     <section class="hero">
       <p>labcheck reproducibility audit</p>
       <h1>examples/broken-repo</h1>
-      <div class="overall">44</div>
+      <div class="overall">39</div>
       <div class="meta">
-        <span>4 high</span>
-        <span>6 medium</span>
+        <span>5 high</span>
+        <span>7 medium</span>
         <span>4 graph nodes</span>
         <span>2 graph edges</span>
       </div>
+    </section>
+
+    <section class="panel">
+      <h2>Review boundary</h2>
+      <p>This is a static, no-key first-pass audit. It does not execute the project code by default, does not upload source files to a hosted backend, and does not prove scientific validity; use it to prioritize rerun and handoff risks before deeper verification.</p>
     </section>
 
     <section class="grid">
@@ -67,27 +75,27 @@
           <div class="score-title">Environment Rebuildability</div>
           <p>Can a new person recreate the environment without guesswork?</p>
         </div>
-        
+
         <div class="score-card">
           <div class="score">3</div>
           <div class="score-title">Notebook Determinism</div>
           <p>Will notebooks run cleanly from top to bottom without invisible state?</p>
         </div>
-        
+
         <div class="score-card">
-          <div class="score">74</div>
+          <div class="score">48</div>
           <div class="score-title">Artifact Availability</div>
           <p>Are referenced inputs and generated artifacts present or clearly accounted for?</p>
         </div>
-        
+
         <div class="score-card">
           <div class="score">86</div>
           <div class="score-title">Portability</div>
           <p>Does the repo avoid machine-specific assumptions and brittle paths?</p>
         </div>
-        
+
         <div class="score-card">
-          <div class="score">80</div>
+          <div class="score">66</div>
           <div class="score-title">Onboarding Readiness</div>
           <p>How likely is a new contributor to succeed from the docs and structure alone?</p>
         </div>
@@ -105,7 +113,7 @@
           <p><strong>First evidence:</strong> notebooks/analysis.ipynb - Execution counts are non-monotonic: [1, 5, 3]</p>
           <p><strong>Suggested fix:</strong> Restart the kernel and run all cells before committing the notebook.</p>
         </article>
-        
+
         <article class="risk-item severity-high">
           <div class="finding-head">
             <span class="badge">HIGH</span>
@@ -115,7 +123,7 @@
           <p><strong>First evidence:</strong> notebooks/analysis.ipynb - 1 cells reference names with no visible prior definition; examples: cell 3: external_state</p>
           <p><strong>Suggested fix:</strong> Make setup cells explicit and ensure the notebook runs top-to-bottom from a fresh kernel.</p>
         </article>
-        
+
         <article class="risk-item severity-high">
           <div class="finding-head">
             <span class="badge">HIGH</span>
@@ -125,7 +133,7 @@
           <p><strong>First evidence:</strong> notebooks/analysis.ipynb - Reads &#x27;data/train.csv&#x27;, but that path is not present in the scanned repo.</p>
           <p><strong>Suggested fix:</strong> Commit the artifact, document how to obtain it, or make the input contract explicit.</p>
         </article>
-        
+
         <article class="risk-item severity-high">
           <div class="finding-head">
             <span class="badge">HIGH</span>
@@ -135,15 +143,15 @@
           <p><strong>First evidence:</strong> notebooks/analysis.ipynb - 1 saved error output(s); examples: cell 3: NameError: name &#x27;external_state&#x27; is not defined</p>
           <p><strong>Suggested fix:</strong> Fix the failing cell, restart the kernel, run all cells, and save the notebook without error outputs.</p>
         </article>
-        
-        <article class="risk-item severity-medium">
+
+        <article class="risk-item severity-high">
           <div class="finding-head">
-            <span class="badge">MEDIUM</span>
-            <strong>LC007 - Randomness used without visible seeding</strong>
+            <span class="badge">HIGH</span>
+            <strong>LC035 - Output directory is not created</strong>
           </div>
-          <p class="file">2 findings across 2 files</p>
-          <p><strong>First evidence:</strong> notebooks/analysis.ipynb - Detected randomness-related APIs, but no obvious seed call in the same file.</p>
-          <p><strong>Suggested fix:</strong> Set and document seeds for the randomness sources used in this workflow.</p>
+          <p class="file">1 finding across 1 file</p>
+          <p><strong>First evidence:</strong> notebooks/analysis.ipynb - Writes &#x27;outputs/report.csv&#x27; under missing output directory notebooks/outputs, outputs.</p>
+          <p><strong>Suggested fix:</strong> Create the directory before writing with mkdir(parents=True, exist_ok=True), commit a placeholder such as .gitkeep, or document the output setup step.</p>
         </article>
         </div>
     </section>
@@ -159,7 +167,7 @@
           <p><strong>Suggested fix:</strong> Restart the kernel and run all cells before committing the notebook.</p>
           <p class="file">notebooks/analysis.ipynb - Execution counts are non-monotonic: [1, 5, 3]</p>
         </article>
-        
+
         <article class="remediation-item severity-high">
           <div class="finding-head">
             <span class="step">2</span>
@@ -168,7 +176,7 @@
           <p><strong>Suggested fix:</strong> Make setup cells explicit and ensure the notebook runs top-to-bottom from a fresh kernel.</p>
           <p class="file">notebooks/analysis.ipynb - 1 cells reference names with no visible prior definition; examples: cell 3: external_state</p>
         </article>
-        
+
         <article class="remediation-item severity-high">
           <div class="finding-head">
             <span class="step">3</span>
@@ -177,7 +185,7 @@
           <p><strong>Suggested fix:</strong> Commit the artifact, document how to obtain it, or make the input contract explicit.</p>
           <p class="file">notebooks/analysis.ipynb - Reads &#x27;data/train.csv&#x27;, but that path is not present in the scanned repo.</p>
         </article>
-        
+
         <article class="remediation-item severity-high">
           <div class="finding-head">
             <span class="step">4</span>
@@ -186,16 +194,21 @@
           <p><strong>Suggested fix:</strong> Fix the failing cell, restart the kernel, run all cells, and save the notebook without error outputs.</p>
           <p class="file">notebooks/analysis.ipynb - 1 saved error output(s); examples: cell 3: NameError: name &#x27;external_state&#x27; is not defined</p>
         </article>
-        
-        <article class="remediation-item severity-medium">
+
+        <article class="remediation-item severity-high">
           <div class="finding-head">
             <span class="step">5</span>
-            <strong>Fix LC007 first because it affects 2 findings across 2 files.</strong>
+            <strong>Fix LC035 first because it affects 1 finding across 1 file.</strong>
           </div>
-          <p><strong>Suggested fix:</strong> Set and document seeds for the randomness sources used in this workflow.</p>
-          <p class="file">notebooks/analysis.ipynb - Detected randomness-related APIs, but no obvious seed call in the same file.</p>
+          <p><strong>Suggested fix:</strong> Create the directory before writing with mkdir(parents=True, exist_ok=True), commit a placeholder such as .gitkeep, or document the output setup step.</p>
+          <p class="file">notebooks/analysis.ipynb - Writes &#x27;outputs/report.csv&#x27; under missing output directory notebooks/outputs, outputs.</p>
         </article>
         </div>
+    </section>
+
+    <section class="panel">
+      <h2>Next steps</h2>
+      <ul class="next-steps"><li><strong>Scorecard summary:</strong> <code>labcheck scorecard examples/broken-repo</code></li><li><strong>Sortable triage CSV:</strong> <code>labcheck scan examples/broken-repo --format csv --output labcheck-findings.csv</code></li><li><strong>Shareable audit bundle:</strong> <code>labcheck pack examples/broken-repo --output-dir labcheck-audit --zip</code></li><li><strong>Explain top finding:</strong> <code>labcheck explain LC001</code></li></ul>
     </section>
 
     <section class="panel">
@@ -206,19 +219,19 @@
               <text x="320" y="86" text-anchor="middle" font-size="12" font-weight="700" fill="#17202a">NOTEBOOK</text>
               <text x="320" y="104" text-anchor="middle" font-size="12" fill="#17202a">analysis.ipynb</text>
             </g>
-            
+
             <g>
               <rect x="40" y="66" width="160" height="48" rx="14" fill="#fef3c7" stroke="#d8cdb9" />
               <text x="120" y="86" text-anchor="middle" font-size="12" font-weight="700" fill="#17202a">INPUT</text>
               <text x="120" y="104" text-anchor="middle" font-size="12" fill="#17202a">train.csv</text>
             </g>
-            
+
             <g>
               <rect x="440" y="66" width="160" height="48" rx="14" fill="#fee2e2" stroke="#d8cdb9" />
               <text x="520" y="86" text-anchor="middle" font-size="12" font-weight="700" fill="#17202a">ARTIFACT</text>
               <text x="520" y="104" text-anchor="middle" font-size="12" fill="#17202a">report.csv</text>
             </g>
-            
+
             <g>
               <rect x="240" y="156" width="160" height="48" rx="14" fill="#dbeafe" stroke="#d8cdb9" />
               <text x="320" y="176" text-anchor="middle" font-size="12" font-weight="700" fill="#17202a">PYTHON</text>
@@ -248,7 +261,7 @@
           <p><strong>Why it matters:</strong> The notebook may rely on hidden runtime state rather than a clean top-to-bottom execution path.</p>
           <p><strong>Suggested fix:</strong> Restart the kernel and run all cells before committing the notebook.</p>
         </article>
-        
+
         <article class="finding severity-low">
           <div class="finding-head">
             <span class="badge">LOW</span>
@@ -259,7 +272,7 @@
           <p><strong>Why it matters:</strong> A notebook handoff is harder when reviewers cannot tell which kernel and language the author intended.</p>
           <p><strong>Suggested fix:</strong> Open the notebook with the intended kernel and save it, or add kernelspec and language_info metadata before sharing.</p>
         </article>
-        
+
         <article class="finding severity-high">
           <div class="finding-head">
             <span class="badge">HIGH</span>
@@ -270,7 +283,7 @@
           <p><strong>Why it matters:</strong> The notebook may only work in the original author&#x27;s live kernel rather than from a clean rerun.</p>
           <p><strong>Suggested fix:</strong> Make setup cells explicit and ensure the notebook runs top-to-bottom from a fresh kernel.</p>
         </article>
-        
+
         <article class="finding severity-high">
           <div class="finding-head">
             <span class="badge">HIGH</span>
@@ -281,7 +294,7 @@
           <p><strong>Why it matters:</strong> A committed traceback is strong evidence that the notebook was not saved after a clean successful rerun.</p>
           <p><strong>Suggested fix:</strong> Fix the failing cell, restart the kernel, run all cells, and save the notebook without error outputs.</p>
         </article>
-        
+
         <article class="finding severity-medium">
           <div class="finding-head">
             <span class="badge">MEDIUM</span>
@@ -292,7 +305,7 @@
           <p><strong>Why it matters:</strong> A repo can have pinned packages and still fail to rebuild if users guess the wrong Python version.</p>
           <p><strong>Suggested fix:</strong> Declare the Python version with requires-python, .python-version, runtime.txt, Pipfile [requires], setup.cfg python_requires, or a Conda python= dependency.</p>
         </article>
-        
+
         <article class="finding severity-medium">
           <div class="finding-head">
             <span class="badge">MEDIUM</span>
@@ -303,7 +316,7 @@
           <p><strong>Why it matters:</strong> Environment rebuilds can drift over time when critical dependencies are unpinned.</p>
           <p><strong>Suggested fix:</strong> Pin this dependency to an exact or tightly bounded version.</p>
         </article>
-        
+
         <article class="finding severity-medium">
           <div class="finding-head">
             <span class="badge">MEDIUM</span>
@@ -314,7 +327,7 @@
           <p><strong>Why it matters:</strong> Hardcoded local paths make the repo brittle on other machines and operating systems.</p>
           <p><strong>Suggested fix:</strong> Use project-relative paths, environment variables, or documented configuration.</p>
         </article>
-        
+
         <article class="finding severity-high">
           <div class="finding-head">
             <span class="badge">HIGH</span>
@@ -325,7 +338,18 @@
           <p><strong>Why it matters:</strong> A new user may not be able to run the workflow because required inputs are missing.</p>
           <p><strong>Suggested fix:</strong> Commit the artifact, document how to obtain it, or make the input contract explicit.</p>
         </article>
-        
+
+        <article class="finding severity-high">
+          <div class="finding-head">
+            <span class="badge">HIGH</span>
+            <strong>LC035 - Output directory is not created</strong>
+          </div>
+          <p class="file">notebooks/analysis.ipynb</p>
+          <p><strong>Evidence:</strong> Writes &#x27;outputs/report.csv&#x27; under missing output directory notebooks/outputs, outputs.</p>
+          <p><strong>Why it matters:</strong> A fresh clone can fail at save time even after setup succeeds if generated artifact directories are only present on the author&#x27;s machine.</p>
+          <p><strong>Suggested fix:</strong> Create the directory before writing with mkdir(parents=True, exist_ok=True), commit a placeholder such as .gitkeep, or document the output setup step.</p>
+        </article>
+
         <article class="finding severity-medium">
           <div class="finding-head">
             <span class="badge">MEDIUM</span>
@@ -336,7 +360,7 @@
           <p><strong>Why it matters:</strong> Results may drift between runs even if the code itself executes successfully.</p>
           <p><strong>Suggested fix:</strong> Set and document seeds for the randomness sources used in this workflow.</p>
         </article>
-        
+
         <article class="finding severity-medium">
           <div class="finding-head">
             <span class="badge">MEDIUM</span>
@@ -347,7 +371,7 @@
           <p><strong>Why it matters:</strong> Results may drift between runs even if the code itself executes successfully.</p>
           <p><strong>Suggested fix:</strong> Set and document seeds for the randomness sources used in this workflow.</p>
         </article>
-        
+
         <article class="finding severity-medium">
           <div class="finding-head">
             <span class="badge">MEDIUM</span>
@@ -358,7 +382,18 @@
           <p><strong>Why it matters:</strong> Setup instructions lose trust quickly when they point to files that do not exist.</p>
           <p><strong>Suggested fix:</strong> Update the README command or restore the missing entrypoint.</p>
         </article>
-        
+
+        <article class="finding severity-medium">
+          <div class="finding-head">
+            <span class="badge">MEDIUM</span>
+            <strong>LC021 - Dependency setup step is undocumented</strong>
+          </div>
+          <p class="file">README.md</p>
+          <p><strong>Evidence:</strong> Found dependency manifest(s) requirements.txt, but README.md does not show an install/setup command.</p>
+          <p><strong>Why it matters:</strong> A README can show what to run and still fail handoff if the next person never installs the dependencies.</p>
+          <p><strong>Suggested fix:</strong> Add a setup step before the run command, such as `python -m pip install -r requirements.txt`, `uv sync`, `poetry install`, or `conda env create -f environment.yml`.</p>
+        </article>
+
         <article class="finding severity-low">
           <div class="finding-head">
             <span class="badge">LOW</span>

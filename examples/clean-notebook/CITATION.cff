@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+title: Clean Labcheck Notebook Example
+message: Cite this example if it helps test a reproducibility handoff workflow.
+type: software
+authors:
+  - family-names: Example
+    given-names: Labcheck
+repository-code: https://github.com/ThomasAquinas14/labcheck

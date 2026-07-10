@@ -1,8 +1,12 @@
 # labcheck Report
 
 - Target: `examples/broken-repo`
-- Overall Score: **44**
-- Severity Mix: **4 high**, **6 medium**, **2 low**
+- Overall Score: **39**
+- Severity Mix: **5 high**, **7 medium**, **2 low**
+
+## Review Boundary
+
+This is a static, no-key first-pass audit. It does not execute the project code by default, does not upload source files to a hosted backend, and does not prove scientific validity; use it to prioritize rerun and handoff risks before deeper verification.
 
 ## Scores
 
@@ -10,9 +14,9 @@
 |---|---:|---|
 | Environment Rebuildability | 66 | Can a new person recreate the environment without guesswork? |
 | Notebook Determinism | 3 | Will notebooks run cleanly from top to bottom without invisible state? |
-| Artifact Availability | 74 | Are referenced inputs and generated artifacts present or clearly accounted for? |
+| Artifact Availability | 48 | Are referenced inputs and generated artifacts present or clearly accounted for? |
 | Portability | 86 | Does the repo avoid machine-specific assumptions and brittle paths? |
-| Onboarding Readiness | 80 | How likely is a new contributor to succeed from the docs and structure alone? |
+| Onboarding Readiness | 66 | How likely is a new contributor to succeed from the docs and structure alone? |
 
 ## Top Risks
 
@@ -22,7 +26,15 @@
 | `LC002` Likely hidden notebook state | `high` | 1 finding across 1 file | notebooks/analysis.ipynb: 1 cells reference names with no visible prior definition; examples: cell 3: external_state |
 | `LC005` Referenced input artifact missing from repo | `high` | 1 finding across 1 file | notebooks/analysis.ipynb: Reads 'data/train.csv', but that path is not present in the scanned repo. |
 | `LC011` Notebook contains saved error output | `high` | 1 finding across 1 file | notebooks/analysis.ipynb: 1 saved error output(s); examples: cell 3: NameError: name 'external_state' is not defined |
-| `LC007` Randomness used without visible seeding | `medium` | 2 findings across 2 files | notebooks/analysis.ipynb: Detected randomness-related APIs, but no obvious seed call in the same file. |
+| `LC035` Output directory is not created | `high` | 1 finding across 1 file | notebooks/analysis.ipynb: Writes 'outputs/report.csv' under missing output directory notebooks/outputs, outputs. |
+
+## Understand Finding Codes
+
+Run these commands for plain-language context, why the finding matters, and the expected fix:
+
+- `labcheck explain LC001`
+- `labcheck explain LC002`
+- `labcheck explain LC005`
 
 ## Remediation Plan
 
@@ -42,10 +54,17 @@
    Suggested fix: Fix the failing cell, restart the kernel, run all cells, and save the notebook without error outputs.
    First evidence: `notebooks/analysis.ipynb` - 1 saved error output(s); examples: cell 3: NameError: name 'external_state' is not defined
 
-5. **Fix LC007 first because it affects 2 findings across 2 files.**
-   Suggested fix: Set and document seeds for the randomness sources used in this workflow.
-   First evidence: `notebooks/analysis.ipynb` - Detected randomness-related APIs, but no obvious seed call in the same file.
+5. **Fix LC035 first because it affects 1 finding across 1 file.**
+   Suggested fix: Create the directory before writing with mkdir(parents=True, exist_ok=True), commit a placeholder such as .gitkeep, or document the output setup step.
+   First evidence: `notebooks/analysis.ipynb` - Writes 'outputs/report.csv' under missing output directory notebooks/outputs, outputs.
 
+
+## Next Steps
+
+- Scorecard summary: `labcheck scorecard examples/broken-repo`
+- Sortable triage CSV: `labcheck scan examples/broken-repo --format csv --output labcheck-findings.csv`
+- Shareable audit bundle: `labcheck pack examples/broken-repo --output-dir labcheck-audit --zip`
+- Explain top finding: `labcheck explain LC001`
 
 ## Provenance Graph
 
@@ -131,6 +150,15 @@
 - Why it matters: A new user may not be able to run the workflow because required inputs are missing.
 - Suggested fix: Commit the artifact, document how to obtain it, or make the input contract explicit.
 
+### LC035 - Output directory is not created
+
+- Severity: `high`
+- Category: `artifacts`
+- File: `notebooks/analysis.ipynb`
+- Evidence: Writes 'outputs/report.csv' under missing output directory notebooks/outputs, outputs.
+- Why it matters: A fresh clone can fail at save time even after setup succeeds if generated artifact directories are only present on the author's machine.
+- Suggested fix: Create the directory before writing with mkdir(parents=True, exist_ok=True), commit a placeholder such as .gitkeep, or document the output setup step.
+
 ### LC007 - Randomness used without visible seeding
 
 - Severity: `medium`
@@ -157,6 +185,15 @@
 - Evidence: Command 'python scripts/train.py' points to 'scripts/train.py', which is not present.
 - Why it matters: Setup instructions lose trust quickly when they point to files that do not exist.
 - Suggested fix: Update the README command or restore the missing entrypoint.
+
+### LC021 - Dependency setup step is undocumented
+
+- Severity: `medium`
+- Category: `onboarding`
+- File: `README.md`
+- Evidence: Found dependency manifest(s) requirements.txt, but README.md does not show an install/setup command.
+- Why it matters: A README can show what to run and still fail handoff if the next person never installs the dependencies.
+- Suggested fix: Add a setup step before the run command, such as `python -m pip install -r requirements.txt`, `uv sync`, `poetry install`, or `conda env create -f environment.yml`.
 
 ### LC010 - Workflow node is disconnected from data lineage
 

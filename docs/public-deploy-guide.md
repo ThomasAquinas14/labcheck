@@ -7,11 +7,13 @@ Because `labcheck` is deliberately built around:
 - a local CLI
 - static sample audits
 - a static landing page
-- a browser-side local-file demo
+- a browser-side demo for local files and bounded public GitHub URL fetches
 
 the safest public deployment model is:
 
 > host static assets publicly, keep the heavier scanning flow local or user-run.
+
+For the precise browser-demo, CLI, GitHub Action, and what-not-to-scan boundaries, read the [Privacy and Safety Model](privacy-and-safety.md).
 
 ---
 
@@ -21,6 +23,9 @@ You can safely host these assets:
 
 - `dist/site/index.html`
 - `dist/site/demo.html`
+- `dist/site/robots.txt`
+- `dist/site/sitemap.xml`
+- `dist/site/llms.txt`
 - `dist/site/docs/sample-audits`
 - `dist/site/docs/case-studies.md`
 
@@ -39,7 +44,7 @@ Why this is safe:
 
 1. Build the static export with `python scripts/build_static_site.py`
 2. Host `dist/site` publicly
-3. Let users try the browser local-file demo
+3. Let users try the browser demo with local files or bounded public GitHub URL fetches
 4. Let serious users install the CLI locally for full scans
 
 That gives you:
@@ -68,11 +73,12 @@ Build the deployable folder:
 
 ```bash
 python scripts/build_static_site.py
+python scripts/check_static_export.py
 ```
 
-Then publish `dist/site`. Do not publish `site/` directly unless you also copy the README and docs beside it; the exporter rewrites repo-relative links so the hosted package is self-contained.
+Then publish `dist/site`. Do not publish `site/` directly unless you also copy the README and docs beside it; the exporter rewrites repo-relative links so the hosted package is self-contained. The static export checker confirms the deploy folder includes the expected public assets and does not leak local workspace paths from the development machine.
 
-There is also a GitHub Pages workflow in `.github/workflows/pages.yml` that builds and publishes this folder automatically from `main`.
+There is also a GitHub Pages workflow in `.github/workflows/pages.yml` that builds, checks, and publishes this folder automatically from `main`.
 
 ---
 
@@ -144,7 +150,8 @@ That would recreate the exact risk pattern you were trying to escape.
 Ship this first:
 
 - landing page
-- browser local-file demo
+- browser demo with local-file scans and bounded public GitHub URL fetches
+- `robots.txt`, `sitemap.xml`, and `llms.txt` discovery assets
 - sample HTML audit
 - case studies
 - README with CLI instructions
@@ -153,9 +160,18 @@ Build it with:
 
 ```bash
 python scripts/build_static_site.py
+python scripts/check_static_export.py
 ```
 
 Then upload or deploy the generated `dist/site` folder.
+
+After the public URL is live, run:
+
+```bash
+python scripts/check_public_urls.py https://thomasaquinas14.github.io/labcheck/
+```
+
+For a custom domain or OCI route, pass that public base URL instead. This checks the live landing page, browser demo, README, sample audit, GitHub Action guide, deploy guide, sitemap, and `llms.txt` for the expected public launch markers.
 
 This is enough for:
 

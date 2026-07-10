@@ -1,14 +1,18 @@
 # labcheck Scorecard
 
 - Target: `examples/broken-repo`
-- Overall score: **44/100**
+- Overall score: **39/100**
 - Scope: **1 notebook**, **1 Python file**
-- Findings: **12** (`4` high, `6` medium, `2` low)
+- Findings: **14** (`5` high, `7` medium, `2` low)
 - Weakest area: **Notebook Determinism** (3/100) - Will notebooks run cleanly from top to bottom without invisible state?
 
 ## Triage Signal
 
-Not handoff-ready yet: fix 4 high-severity findings before sending this repo to a reviewer, student, or new engineer.
+Not handoff-ready yet: fix 5 high-severity findings before sending this repo to a reviewer, student, or new engineer.
+
+## Review Boundary
+
+This is a static, no-key first-pass audit. It does not execute the project code by default, does not upload source files to a hosted backend, and does not prove scientific validity; use it to prioritize rerun and handoff risks before deeper verification.
 
 ## Top Risks
 
@@ -27,7 +31,10 @@ Not handoff-ready yet: fix 4 high-severity findings before sending this repo to 
 3. Fix LC005 first because it affects 1 finding across 1 file.
    Suggested fix: Commit the artifact, document how to obtain it, or make the input contract explicit.
 
-## Next Step
+## Next Steps
 
 - Full Markdown report: `labcheck scan examples/broken-repo --format markdown`
+- Scorecard summary: `labcheck scorecard examples/broken-repo`
+- Sortable triage CSV: `labcheck scan examples/broken-repo --format csv --output labcheck-findings.csv`
 - Shareable audit bundle: `labcheck pack examples/broken-repo --output-dir labcheck-audit --zip`
+- Explain top finding: `labcheck explain LC001`

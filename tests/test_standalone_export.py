@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 import shutil
+import uuid
 
 import pytest
 
@@ -17,10 +18,14 @@ def _load_exporter():
     return module
 
 
+def _repo_temp_dir(name: str) -> Path:
+    return Path.cwd() / f".tmp-{name}-{uuid.uuid4().hex}"
+
+
 def test_standalone_export_file_list_excludes_generated_and_cache_files() -> None:
     exporter = _load_exporter()
     repo_root = Path.cwd()
-    output_dir = repo_root / ".tmp-standalone-export-test"
+    output_dir = _repo_temp_dir("standalone-export-test")
 
     exported = {
         path.relative_to(repo_root).as_posix()
@@ -30,7 +35,9 @@ def test_standalone_export_file_list_excludes_generated_and_cache_files() -> Non
     assert "README.md" in exported
     assert "action.yml" in exported
     assert "docs/assets/scorecard-preview.svg" in exported
+    assert "docs/demo-video-script.md" in exported
     assert "docs/launch-kit.md" in exported
+    assert "scripts/check_public_urls.py" in exported
     assert "scripts/export_standalone_repo.py" in exported
     assert "dist/site/index.html" not in exported
     assert not any("__pycache__" in path for path in exported)
@@ -40,7 +47,7 @@ def test_standalone_export_file_list_excludes_generated_and_cache_files() -> Non
 def test_standalone_export_creates_clean_temporary_repo_copy() -> None:
     exporter = _load_exporter()
     repo_root = Path.cwd()
-    output_dir = repo_root / ".tmp-standalone-export-test"
+    output_dir = _repo_temp_dir("standalone-export-test")
     shutil.rmtree(output_dir, ignore_errors=True)
 
     try:
@@ -48,6 +55,7 @@ def test_standalone_export_creates_clean_temporary_repo_copy() -> None:
 
         assert (exported_dir / "README.md").exists()
         assert (exported_dir / "action.yml").exists()
+        assert (exported_dir / "docs" / "demo-video-script.md").exists()
         assert (exported_dir / "docs" / "launch-kit.md").exists()
         assert (exported_dir / "docs" / "assets" / "scorecard-preview.svg").exists()
         assert not (exported_dir / "dist").exists()

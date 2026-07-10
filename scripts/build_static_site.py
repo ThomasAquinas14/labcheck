@@ -25,16 +25,37 @@ DOC_REWRITES = {
 
 DOC_FILES = [
     "case-studies.md",
+    "comparison.md",
+    "demo-video-script.md",
     "faq.md",
+    "first-audit.md",
+    "good-first-issues.md",
     "github-publish-guide.md",
     "github-action.md",
+    "install.md",
+    "issue-labels.md",
     "lab-adoption-guide.md",
     "launch-kit.md",
+    "launch-post-after-action.md",
     "launch-week-plan.md",
+    "maintainer-reply-templates.md",
     "outreach-playbook.md",
     "outreach-tracker-template.md",
+    "privacy-and-safety.md",
+    "public-triage-board.md",
     "public-deploy-guide.md",
     "release-checklist.md",
+    "reply-derived-case-study-seed.md",
+    "reply-to-case-study-checklist.md",
+    "reproducibility-patterns.md",
+    "roadmap.md",
+    "scoring-guide.md",
+]
+
+ROOT_STATIC_FILES = [
+    "robots.txt",
+    "sitemap.xml",
+    "llms.txt",
 ]
 
 
@@ -70,13 +91,18 @@ def build_static_site(repo_root: Path, output_dir: Path = DEFAULT_OUTPUT_DIR) ->
 
     landing_html = (repo_root / "site" / "index.html").read_text(encoding="utf-8")
     (output_dir / "index.html").write_text(_rewrite_landing_links(landing_html), encoding="utf-8")
-    _copy_file(repo_root / "site" / "demo.html", output_dir / "demo.html")
+    demo_html = (repo_root / "site" / "demo.html").read_text(encoding="utf-8")
+    (output_dir / "demo.html").write_text(_rewrite_landing_links(demo_html), encoding="utf-8")
+    for file_name in ROOT_STATIC_FILES:
+        _copy_file(repo_root / "site" / file_name, output_dir / file_name)
     readme = (repo_root / "README.md").read_text(encoding="utf-8")
     (output_dir / "README.md").write_text(_rewrite_markdown_links(readme, README_REWRITES), encoding="utf-8")
     _copy_file(repo_root / "LICENSE", output_dir / "LICENSE")
     _copy_file(repo_root / "CITATION.cff", output_dir / "CITATION.cff")
     _copy_file(repo_root / "CONTRIBUTING.md", output_dir / "CONTRIBUTING.md")
+    _copy_file(repo_root / "CODE_OF_CONDUCT.md", output_dir / "CODE_OF_CONDUCT.md")
     _copy_file(repo_root / "SECURITY.md", output_dir / "SECURITY.md")
+    _copy_file(repo_root / "SUPPORT.md", output_dir / "SUPPORT.md")
 
     docs_output = output_dir / "docs"
     for file_name in DOC_FILES:

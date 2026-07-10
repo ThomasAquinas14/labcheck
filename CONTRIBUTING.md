@@ -4,7 +4,11 @@ Thanks for helping make research and ML repositories easier to rerun.
 
 `labcheck` is intentionally no-key, local-first, and heuristic. Good contributions should preserve those constraints.
 
+Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). If you need help choosing the right issue type, start with [SUPPORT.md](SUPPORT.md).
+
 ## Good first contributions
+
+If you want a concrete starter task, begin with [docs/good-first-issues.md](docs/good-first-issues.md). If you want the longer product direction, read [docs/roadmap.md](docs/roadmap.md).
 
 - Add a small, well-explained reproducibility check.
 - Improve an existing check to reduce false positives.

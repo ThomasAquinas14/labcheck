@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from labcheck.reporters import render_html, render_markdown, render_scorecard
+from labcheck.reporters import (
+    render_html,
+    render_issue_draft,
+    render_markdown,
+    render_outreach_note,
+    render_scorecard,
+    render_target_fit,
+)
 from labcheck.scanner import scan_path
 
 
@@ -16,6 +23,9 @@ def build_sample_audits(output_dir: Path = DEFAULT_OUTPUT_DIR) -> list[Path]:
     report = scan_path(SAMPLE_TARGET)
     files = [
         (output_dir / "broken-repo-scorecard.md", render_scorecard(report)),
+        (output_dir / "broken-repo-target-fit.md", render_target_fit(report)),
+        (output_dir / "broken-repo-outreach-note.md", render_outreach_note(report)),
+        (output_dir / "broken-repo-issue-draft.md", render_issue_draft(report)),
         (output_dir / "broken-repo-audit.md", render_markdown(report)),
         (output_dir / "broken-repo-audit.html", render_html(report)),
     ]

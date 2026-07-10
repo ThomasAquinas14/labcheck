@@ -80,6 +80,8 @@ def publish_commands(repo: str = DEFAULT_REPO) -> list[str]:
     return [
         "python scripts/release_check.py",
         f"gh repo create {repo} --public --source=. --remote=origin --push",
+        'git tag -a v1 -m "labcheck GitHub Action v1"',
+        "git push origin v1",
         (
             f'gh repo edit {repo} --description "{DEFAULT_DESCRIPTION}" '
             f'--homepage "{DEFAULT_HOMEPAGE}" --add-topic "{topics}"'

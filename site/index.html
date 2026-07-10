@@ -6,6 +6,8 @@
   <title>labcheck - No-key reproducibility audits for research and ML repos</title>
   <meta name="description" content="labcheck is a local-first, no-API-key reproducibility auditor for notebook-heavy research and ML repositories. Scan notebooks, scripts, manifests, README instructions, and simple lineage without a hosted backend.">
   <link rel="canonical" href="https://thomasaquinas14.github.io/labcheck/">
+  <link rel="sitemap" type="application/xml" href="sitemap.xml">
+  <link rel="alternate" type="text/plain" href="llms.txt" title="llms.txt">
   <meta name="theme-color" content="#0f766e">
   <meta property="og:title" content="labcheck - No-key reproducibility audits">
   <meta property="og:description" content="Audit whether research and ML repos can actually be rerun: hidden notebook state, missing artifacts, README drift, unpinned dependencies, and lineage risks.">
@@ -19,6 +21,32 @@
   <meta name="twitter:description" content="A local-first reproducibility auditor for research and ML repositories. No paid APIs, no backend secret, no inference bill.">
   <meta name="twitter:image" content="https://thomasaquinas14.github.io/labcheck/docs/assets/scorecard-preview.svg">
   <meta name="twitter:image:alt" content="labcheck reproducibility scorecard preview">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "labcheck",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Windows, macOS, Linux",
+    "url": "https://thomasaquinas14.github.io/labcheck/",
+    "downloadUrl": "https://github.com/ThomasAquinas14/labcheck",
+    "codeRepository": "https://github.com/ThomasAquinas14/labcheck",
+    "description": "A local-first, no-API-key reproducibility auditor for notebook-heavy research and ML repositories.",
+    "softwareRequirements": "Python 3.11+; no API key required",
+    "isAccessibleForFree": true,
+    "keywords": "reproducibility, Jupyter notebooks, machine learning, research software, static analysis",
+    "audience": [
+      { "@type": "Audience", "audienceType": "Research labs" },
+      { "@type": "Audience", "audienceType": "ML and data founders" },
+      { "@type": "Audience", "audienceType": "Open-source maintainers" }
+    ],
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
   <style>
     :root {
       --sand: #f5efe2;
@@ -206,27 +234,40 @@
         <div class="cta-row">
           <a class="button primary" href="./demo.html">Try browser demo</a>
           <a class="button secondary" href="../docs/sample-audits/broken-repo-audit.html">Open sample HTML audit</a>
+          <a class="button secondary" href="https://github.com/ThomasAquinas14/labcheck/issues/new?template=audit_request.yml">Request public repo audit</a>
           <a class="button secondary" href="../README.md">Read the README</a>
         </div>
         <div class="resource-row">
           <a class="button ghost" href="../docs/sample-audits/broken-repo-audit.md">Markdown audit</a>
           <a class="button secondary" href="../docs/sample-audits/broken-repo-scorecard.md">Open sample scorecard</a>
+          <a class="button ghost" href="../docs/sample-audits/broken-repo-target-fit.md">Target-fit sample</a>
+          <a class="button ghost" href="../docs/sample-audits/broken-repo-outreach-note.md">Outreach note sample</a>
+          <a class="button ghost" href="../docs/sample-audits/broken-repo-issue-draft.md">Issue draft sample</a>
+          <a class="button ghost" href="../docs/sample-audits/broken-repo-labeled-issue.md">Labeled issue bundle</a>
           <a class="button ghost" href="../docs/case-studies.md">Case studies</a>
+          <a class="button ghost" href="../docs/demo-video-script.md">Demo video script</a>
           <a class="button ghost" href="../docs/faq.md">FAQ</a>
+          <a class="button ghost" href="../docs/first-audit.md">First audit guide</a>
+          <a class="button ghost" href="../docs/reproducibility-patterns.md">Pattern gallery</a>
+          <a class="button ghost" href="../docs/roadmap.md">Roadmap</a>
+          <a class="button ghost" href="../docs/scoring-guide.md">Scoring guide</a>
+          <a class="button ghost" href="../docs/good-first-issues.md">Good first issues</a>
           <a class="button ghost" href="../docs/github-action.md">GitHub Action</a>
           <a class="button ghost" href="../docs/launch-kit.md">Launch kit</a>
           <a class="button ghost" href="../docs/outreach-playbook.md">Outreach playbook</a>
+          <a class="button ghost" href="../docs/privacy-and-safety.md">Privacy and safety</a>
           <a class="button ghost" href="../docs/public-deploy-guide.md">Deploy guide</a>
           <a class="button ghost" href="../CITATION.cff">Citation</a>
         </div>
       </div>
       <aside class="hero-side">
         <div class="eyebrow">Current sample</div>
-        <div class="score">44</div>
-        <p class="small">The intentionally broken demo repo scores poorly because it combines hidden notebook state, a saved traceback, missing artifacts, README drift, missing runtime metadata, and unseeded randomness.</p>
+        <div class="score">39</div>
+        <p class="small">The intentionally broken demo repo scores poorly because it combines hidden notebook state, a saved traceback, missing artifacts, a missing output directory, README drift, missing runtime metadata, and unseeded randomness.</p>
         <div class="meta">
-          <span>4 high-severity findings</span>
-          <span>6 medium-severity findings</span>
+          <span>5 high-severity findings</span>
+          <span>7 medium-severity findings</span>
+          <span>14 total findings</span>
           <span>Prioritized remediation plan</span>
           <span>Inline SVG provenance graph</span>
           <span>No API keys required</span>
@@ -248,13 +289,12 @@
       </article>
       <article class="panel">
         <div class="eyebrow">Install path</div>
-        <h2 style="margin-top: 10px;">Run it on a repo in four commands.</h2>
-        <div class="code">git clone https://github.com/ThomasAquinas14/labcheck.git
-cd labcheck
-python -m pip install -e .
-labcheck scorecard examples/broken-repo</div>
+        <h2 style="margin-top: 10px;">Install it and audit a demo repo in three commands.</h2>
+        <div class="code">pipx install git+https://github.com/ThomasAquinas14/labcheck.git
+labcheck demo-repo
+labcheck scorecard labcheck-demo-repo</div>
         <p class="small">
-          For a shareable bundle, run <code>labcheck pack . --output-dir labcheck-audit --zip</code>.
+          The generated fixture is intentionally broken, so the first scorecard shows hidden state, missing inputs, and concrete first fixes without cloning this source repo.
         </p>
       </article>
     </section>
@@ -277,14 +317,94 @@ labcheck scorecard examples/broken-repo</div>
         <p class="small">Flags datasets and files that the code reads but the repo never actually includes.</p>
       </article>
       <article class="card">
+        <div class="tag high">Fresh-clone break</div>
+        <h3>Missing globbed inputs</h3>
+        <p class="small">Flags <code>glob()</code>, <code>os.listdir()</code>, and <code>Path.glob()</code> calls that discover inputs from data-like directories missing from the repo.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Determinism</div>
+        <h3>Unsorted file discovery</h3>
+        <p class="small">Flags input discovery via <code>glob()</code>, <code>os.listdir()</code>, and <code>Path.glob()</code> when the workflow does not stabilize ordering with <code>sorted(...)</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Data drift</div>
+        <h3>Mutable remote data URLs</h3>
+        <p class="small">Flags branch/latest-style remote inputs in reads or download calls, such as raw GitHub <code>main</code> links, unless the code documents a checksum or stable snapshot.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Integrity gap</div>
+        <h3>Remote artifacts without checksums</h3>
+        <p class="small">Flags stable-looking remote data reads and downloads when the repo does not verify a <code>sha256</code>, checksum, or hash.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Handoff wedge</div>
+        <h3>Remote downloads without timeouts</h3>
+        <p class="small">Flags direct <code>requests</code>, <code>urllib</code>, <code>curl</code>, or <code>wget</code> downloads that can hang forever in CI or reviewer reruns.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Model/data drift</div>
+        <h3>Unpinned Hugging Face artifacts</h3>
+        <p class="small">Flags Hub datasets, models, and downloads used without <code>revision=</code>, so reruns do not silently follow a moving default branch.</p>
+      </article>
+      <article class="card">
         <div class="tag medium">Provenance gap</div>
         <h3>Orphan generated outputs</h3>
         <p class="small">Flags committed files under `outputs/`, `results/`, `figures/`, and similar folders when no scanned notebook or script visibly writes them.</p>
       </article>
       <article class="card">
+        <div class="tag high">Fresh-clone break</div>
+        <h3>Missing output directories</h3>
+        <p class="small">Flags save/write calls to <code>outputs/</code>, <code>models/</code>, and checkpoint-style paths when the directory is not present or created first.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Result drift</div>
+        <h3>Timestamped output paths</h3>
+        <p class="small">Flags generated artifact names derived from <code>datetime.now()</code>, <code>date.today()</code>, <code>time.time()</code>, or similar current-time calls.</p>
+      </article>
+      <article class="card">
+        <div class="tag low">Data handoff</div>
+        <h3>DVC and Git LFS restore gaps</h3>
+        <p class="small">Detects data-versioning metadata when the README never tells a reviewer to run <code>dvc pull</code> or <code>git lfs pull</code>.</p>
+      </article>
+      <article class="card">
         <div class="tag medium">Contributor pain</div>
         <h3>Loose environment manifests</h3>
         <p class="small">Checks `requirements.txt`, `pyproject.toml`, and Conda environment files for dependencies that can drift between machines.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Dependency drift</div>
+        <h3>Moving VCS dependency refs</h3>
+        <p class="small">Flags <code>git+</code>, Mercurial, SVN, and Bazaar dependencies that omit a ref or point at branches such as <code>main</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Fresh-clone break</div>
+        <h3>Missing local helper imports</h3>
+        <p class="small">Flags project-local-looking imports such as <code>utils</code>, <code>helpers</code>, or <code>preprocessing</code> when the module is not shared.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Hardware gotcha</div>
+        <h3>Undocumented accelerator requirement</h3>
+        <p class="small">Flags GPU/CUDA-specific code when README or docs never mention the required accelerator stack or CPU fallback.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Container drift</div>
+        <h3>Floating Docker base image</h3>
+        <p class="small">Flags <code>FROM python:latest</code>, untagged images, and branch-style base tags that can rebuild differently later.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Container gap</div>
+        <h3>Dockerfile skips dependency manifest</h3>
+        <p class="small">Flags Python Dockerfiles that copy the repo but never install <code>requirements.txt</code>, <code>pyproject.toml</code>, or Conda environment files.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Notebook drift</div>
+        <h3>Inline notebook installs</h3>
+        <p class="small">Flags <code>%pip install pandas</code>, <code>!pip install torch</code>, and similar notebook installs when packages are not pinned or moved into a manifest.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Machine setup gap</div>
+        <h3>Inline OS package installs</h3>
+        <p class="small">Flags notebook or script cells that hide <code>apt-get install</code>, <code>brew install</code>, <code>apk add</code>, or similar machine-level setup.</p>
       </article>
       <article class="card">
         <div class="tag medium">ML reproducibility</div>
@@ -297,9 +417,74 @@ labcheck scorecard examples/broken-repo</div>
         <p class="small">Flags pandas <code>sample()</code> calls that can select different rows unless <code>random_state</code> is documented.</p>
       </article>
       <article class="card">
+        <div class="tag medium">Data simulation drift</div>
+        <h3>Seedless NumPy Generators</h3>
+        <p class="small">Flags <code>np.random.default_rng()</code> calls without an explicit seed, even when legacy <code>np.random.seed()</code> appears nearby.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">ML reproducibility</div>
+        <h3>PyTorch random_split drift</h3>
+        <p class="small">Flags PyTorch <code>random_split</code> calls that omit a seeded <code>generator</code>, making train/validation splits drift.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">ML reproducibility</div>
+        <h3>PyTorch DataLoader shuffle drift</h3>
+        <p class="small">Flags shuffled PyTorch <code>DataLoader</code> instances that omit a seeded <code>generator</code>, making batch order and training trajectories drift.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">ML reproducibility</div>
+        <h3>PyTorch worker seed drift</h3>
+        <p class="small">Flags multi-worker PyTorch <code>DataLoader</code> instances that omit <code>worker_init_fn</code>, so random transforms can drift across worker processes.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">ML reproducibility</div>
+        <h3>TensorFlow randomness drift</h3>
+        <p class="small">Flags TensorFlow random tensor, shuffle, and initializer calls when no visible TensorFlow seed is set.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">ML reproducibility</div>
+        <h3>XGBoost estimator drift</h3>
+        <p class="small">Flags XGBoost estimators that omit <code>random_state</code> or <code>seed</code>, a common source of drifting model fits.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">ML reproducibility</div>
+        <h3>Optuna sampler drift</h3>
+        <p class="small">Flags Optuna studies and samplers that omit a fixed sampler seed, making hyperparameter search results hard to compare.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">ML reproducibility</div>
+        <h3>JAX PRNG key reuse</h3>
+        <p class="small">Flags repeated JAX random draws that reuse the same PRNG key without a visible split, a subtle source of correlated stochastic inputs.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">DataFrame drift</div>
+        <h3>Polars sampling drift</h3>
+        <p class="small">Flags visible Polars <code>sample()</code> and <code>shuffle()</code> calls that omit <code>seed</code>.</p>
+      </article>
+      <article class="card">
         <div class="tag medium">Contributor pain</div>
         <h3>README drift</h3>
         <p class="small">Finds documented commands that point to files that no longer exist, which is one of the fastest ways to lose trust with new users.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">CI drift</div>
+        <h3>Floating GitHub Action reference</h3>
+        <p class="small">Flags workflow actions such as <code>owner/action@main</code> or missing refs that can change after the repo is handed off.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">CI proof gap</div>
+        <h3>CI without verification</h3>
+        <p class="small">Flags workflows that install dependencies but never run tests, notebooks, <code>labcheck</code>, or a reproduce/check command.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Handoff gap</div>
+        <h3>Missing setup step</h3>
+        <p class="small">Flags READMEs that show a run command while dependency manifests exist, but never tell a reviewer how to install the environment first.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">Automation blocker</div>
+        <h3>Interactive rerun prompts</h3>
+        <p class="small">Flags <code>input()</code> and <code>getpass()</code> calls that stop notebooks, CI jobs, or reviewer reruns until a human types into a terminal.</p>
       </article>
       <article class="card">
         <div class="tag medium">Workflow clarity</div>
@@ -338,16 +523,17 @@ labcheck scorecard examples/broken-repo</div>
     <h2 class="section-title">Try the browser demo</h2>
     <section class="panel">
       <p class="small">
-        The static demo page can quick-scan a single notebook or a small set of local repo files entirely in the browser. No upload, no backend, no inference key, no bill.
+        The static demo page can quick-scan a single notebook, a small set of local repo files, or bounded public GitHub repo files entirely in the browser. No upload, no backend, no inference key, no bill. The <a href="../docs/privacy-and-safety.md">privacy and safety model</a> explains the exact boundaries.
       </p>
       <p class="small">
-        It includes a visual lineage panel, rough manifest/README/file-presence checks, and downloadable scorecard/Markdown/JSON results, so the browser demo is useful for sharing as well as exploration.
+        It includes a visual lineage panel, rough manifest/README/file-presence checks, an audience-specific target-fit card for professor/founder/maintainer outreach, and downloadable scorecard/target-fit/issue-draft/outreach-note/Markdown/CSV/JSON results, so the browser demo is useful for sharing as well as exploration.
       </p>
       <p class="small">
-        The demo includes a one-click sample repo snapshot, so a visitor can see multi-file findings immediately without preparing an upload.
+        The demo includes a one-click sample repo snapshot, a public GitHub URL box, and shareable prefilled links such as <code>demo.html?repo=owner/repo</code> or <code>demo.html?repo=owner/repo&amp;audience=professor</code>. Browser GitHub audits stay bounded and prioritize README/manifests, CI, Docker/Make files, notebooks, and Python source, so a visitor can see multi-file findings immediately without preparing an upload. Use <code>labcheck demo-link https://github.com/owner/repo</code> to generate a safe prefilled URL from the CLI, add <code>--audience professor</code> to preselect the target-fit card, or add <code>--format markdown --auto-audit</code> for a paste-ready email, issue, README, or launch-post link.
       </p>
       <div class="audit-links">
-        <a class="button primary" href="./demo.html">Open browser local-file demo</a>
+        <a class="button primary" href="./demo.html">Open browser demo</a>
+        <a class="button secondary" href="../docs/comparison.md">Open comparison guide</a>
       </div>
     </section>
 
@@ -364,6 +550,26 @@ labcheck scorecard examples/broken-repo</div>
         <p class="small"><strong>Evidence:</strong> The notebook reads <code>data/train.csv</code>, but the file is not present in the repo.</p>
       </article>
       <article class="card">
+        <div class="tag high">LC053</div>
+        <h3>Gitignored input</h3>
+        <p class="small"><strong>Evidence:</strong> Code reads <code>data/train.csv</code>, but <code>.gitignore</code> excludes the data path from public clones.</p>
+      </article>
+      <article class="card">
+        <div class="tag high">LC054</div>
+        <h3>Hardcoded secret</h3>
+        <p class="small"><strong>Evidence:</strong> A config or source file assigns a secret-looking token, with the value masked in the report.</p>
+      </article>
+      <article class="card">
+        <div class="tag high">LC036</div>
+        <h3>Missing globbed input</h3>
+        <p class="small"><strong>Evidence:</strong> Code uses <code>Path('data/raw').glob('*.csv')</code>, but <code>data/raw</code> is not present.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC038</div>
+        <h3>Unsorted discovery order</h3>
+        <p class="small"><strong>Evidence:</strong> Code discovers <code>data/raw/*.csv</code> without <code>sorted(...)</code>, so row or batch order can drift across machines.</p>
+      </article>
+      <article class="card">
         <div class="tag high">LC011</div>
         <h3>Saved traceback</h3>
         <p class="small"><strong>Evidence:</strong> The notebook is committed with a <code>NameError</code> output from a failed cell.</p>
@@ -374,9 +580,99 @@ labcheck scorecard examples/broken-repo</div>
         <p class="small"><strong>Evidence:</strong> A committed result file exists under an output-like folder, but no scanned notebook or script visibly writes it.</p>
       </article>
       <article class="card">
+        <div class="tag high">LC035</div>
+        <h3>Missing output directory</h3>
+        <p class="small"><strong>Evidence:</strong> A notebook or script writes <code>outputs/report.csv</code>, but the output directory is not included or created.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC037</div>
+        <h3>Timestamped output path</h3>
+        <p class="small"><strong>Evidence:</strong> Code writes <code>outputs/report_{timestamp}.csv</code>, making the expected artifact path change on every run.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC055</div>
+        <h3>Clock-dependent logic</h3>
+        <p class="small"><strong>Evidence:</strong> Code uses <code>date.today()</code> or <code>time.time()</code> inside workflow logic, so reruns can depend on the wall clock.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC056</div>
+        <h3>Set-derived order</h3>
+        <p class="small"><strong>Evidence:</strong> Code uses <code>list(set(...))</code> or loops over <code>set(...)</code>, so label or row order can drift across runs.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC057</div>
+        <h3>Unstable hash split</h3>
+        <p class="small"><strong>Evidence:</strong> Code uses Python <code>hash()</code> for IDs, seeds, or splits even though values can change between processes.</p>
+      </article>
+      <article class="card">
         <div class="tag medium">LC008</div>
         <h3>README drift</h3>
-        <p class="small"><strong>Evidence:</strong> <code>python scripts/train.py</code> is documented, but the referenced file is missing.</p>
+        <p class="small"><strong>Evidence:</strong> A documented script, Python module, or Makefile target is missing.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC062</div>
+        <h3>Dead docs link</h3>
+        <p class="small"><strong>Evidence:</strong> A README or Markdown doc links to a missing notebook, image, data file, or policy page.</p>
+      </article>
+      <article class="card">
+        <div class="tag low">LC063</div>
+        <h3>Missing license metadata</h3>
+        <p class="small"><strong>Evidence:</strong> Runnable code exists, but no top-level license, pyproject license, or README license section is visible.</p>
+      </article>
+      <article class="card">
+        <div class="tag low">LC064</div>
+        <h3>Missing citation metadata</h3>
+        <p class="small"><strong>Evidence:</strong> A research or notebook-heavy repo has no <code>CITATION.cff</code>, DOI, or README citation guidance.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC065</div>
+        <h3>Compose dependency drift</h3>
+        <p class="small"><strong>Evidence:</strong> A Compose service declares <code>depends_on: [db]</code>, but <code>db</code> is not defined in that Compose file.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC066</div>
+        <h3>Compose network drift</h3>
+        <p class="small"><strong>Evidence:</strong> A service joins <code>backend</code>, but the Compose file has no top-level <code>backend</code> network definition.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC067</div>
+        <h3>Compose healthcheck drift</h3>
+        <p class="small"><strong>Evidence:</strong> <code>healthcheck.test</code> calls <code>./scripts/healthcheck.sh</code>, but that script is missing from the repo.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC068</div>
+        <h3>Compose secret/config drift</h3>
+        <p class="small"><strong>Evidence:</strong> A top-level Compose <code>secret</code> or <code>config</code> uses <code>file:</code> to point at a missing local file.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC069</div>
+        <h3>Compose env_file drift</h3>
+        <p class="small"><strong>Evidence:</strong> A service declares <code>env_file: ./config/dev.env</code>, but that env file is missing from the repo.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC070</div>
+        <h3>Compose extends drift</h3>
+        <p class="small"><strong>Evidence:</strong> A service extends <code>base</code> or <code>compose.base.yml</code>, but the target service or file is missing.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC071</div>
+        <h3>Compose include drift</h3>
+        <p class="small"><strong>Evidence:</strong> Top-level <code>include: ./compose/common.yml</code> points at a Compose file missing from the repo.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC072</div>
+        <h3>Compose label_file drift</h3>
+        <p class="small"><strong>Evidence:</strong> A service declares <code>label_file: ./labels/api.labels</code>, but that label file is missing.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC073</div>
+        <h3>Compose watch path drift</h3>
+        <p class="small"><strong>Evidence:</strong> <code>develop.watch[].path: ./src</code> points at a file or directory missing from the repo.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC006</div>
+        <h3>Hosted-notebook path</h3>
+        <p class="small"><strong>Evidence:</strong> Code hardcodes a path like <code>/content/drive/...</code> or <code>/kaggle/input/...</code>.</p>
       </article>
       <article class="card">
         <div class="tag medium">LC012</div>
@@ -394,6 +690,56 @@ labcheck scorecard examples/broken-repo</div>
         <p class="small"><strong>Evidence:</strong> A pandas <code>sample()</code> call runs without a documented <code>random_state</code>.</p>
       </article>
       <article class="card">
+        <div class="tag medium">LC039</div>
+        <h3>NumPy Generator seed gap</h3>
+        <p class="small"><strong>Evidence:</strong> <code>np.random.default_rng()</code> creates a Generator without a documented seed.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC031</div>
+        <h3>PyTorch random_split drift</h3>
+        <p class="small"><strong>Evidence:</strong> A PyTorch <code>random_split</code> call runs without a seeded <code>generator</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC040</div>
+        <h3>PyTorch DataLoader shuffle drift</h3>
+        <p class="small"><strong>Evidence:</strong> A shuffled <code>DataLoader</code> is constructed without passing a seeded <code>generator</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC059</div>
+        <h3>PyTorch worker seed drift</h3>
+        <p class="small"><strong>Evidence:</strong> A multi-worker <code>DataLoader</code> is constructed without <code>worker_init_fn</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC058</div>
+        <h3>PyTorch backend drift</h3>
+        <p class="small"><strong>Evidence:</strong> <code>cudnn.benchmark = True</code> or disabled deterministic algorithms can pick nondeterministic kernels despite visible seeds.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC032</div>
+        <h3>TensorFlow randomness drift</h3>
+        <p class="small"><strong>Evidence:</strong> TensorFlow random calls appear without <code>tf.random.set_seed</code> or <code>set_random_seed</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC033</div>
+        <h3>XGBoost estimator drift</h3>
+        <p class="small"><strong>Evidence:</strong> An XGBoost estimator is constructed without <code>random_state</code> or <code>seed</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC060</div>
+        <h3>Optuna sampler drift</h3>
+        <p class="small"><strong>Evidence:</strong> An Optuna study or sampler is created without a fixed sampler <code>seed</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC061</div>
+        <h3>JAX PRNG key reuse</h3>
+        <p class="small"><strong>Evidence:</strong> The same JAX PRNG key is passed to multiple random draws without a visible <code>split</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC034</div>
+        <h3>Polars sampling drift</h3>
+        <p class="small"><strong>Evidence:</strong> A Polars <code>sample()</code> or <code>shuffle()</code> call runs without <code>seed</code>.</p>
+      </article>
+      <article class="card">
         <div class="tag medium">LC013</div>
         <h3>Missing quickstart</h3>
         <p class="small"><strong>Evidence:</strong> Runnable code exists, but the README does not show a clear setup or run command.</p>
@@ -403,12 +749,137 @@ labcheck scorecard examples/broken-repo</div>
         <h3>No execution evidence</h3>
         <p class="small"><strong>Evidence:</strong> A multi-cell notebook has empty execution counts throughout.</p>
       </article>
+      <article class="card">
+        <div class="tag low">LC018</div>
+        <h3>Undocumented data restore</h3>
+        <p class="small"><strong>Evidence:</strong> DVC or Git LFS metadata exists, but the README does not show the restore command.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC019</div>
+        <h3>Runtime conflict</h3>
+        <p class="small"><strong>Evidence:</strong> <code>.python-version</code>, Conda, Pipfile, setup.cfg, or Dockerfile declarations ask for different Python minors.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC020</div>
+        <h3>Inline install drift</h3>
+        <p class="small"><strong>Evidence:</strong> A notebook installs packages inline without a version pin, so reruns can silently pick up newer packages.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC048</div>
+        <h3>Inline OS package install</h3>
+        <p class="small"><strong>Evidence:</strong> A notebook cell runs <code>!apt-get install graphviz</code> or similar machine-level setup that is absent from the environment manifest.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC021</div>
+        <h3>Missing setup step</h3>
+        <p class="small"><strong>Evidence:</strong> A manifest such as <code>requirements.txt</code> exists, but the README only shows the run command.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC022</div>
+        <h3>Mutable remote input</h3>
+        <p class="small"><strong>Evidence:</strong> Code reads or downloads from a branch/latest-style remote data URL that can change after the report is written.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC047</div>
+        <h3>Remote download timeout gap</h3>
+        <p class="small"><strong>Evidence:</strong> Code calls <code>requests.get(...)</code>, <code>urllib.request.urlretrieve(...)</code>, or shell <code>curl</code>/<code>wget</code> without an explicit timeout.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC050</div>
+        <h3>Remote artifact checksum gap</h3>
+        <p class="small"><strong>Evidence:</strong> Code reads a stable-looking remote dataset or model artifact, but no <code>sha256</code>, checksum, or hash verification is visible.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC042</div>
+        <h3>Unpinned Hugging Face revision</h3>
+        <p class="small"><strong>Evidence:</strong> <code>load_dataset()</code> or <code>from_pretrained()</code> uses a Hub ID without <code>revision=</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC043</div>
+        <h3>Moving VCS dependency refs</h3>
+        <p class="small"><strong>Evidence:</strong> A dependency manifest, Conda <code>pip:</code> entry, or notebook install uses a VCS URL with no ref or a branch such as <code>main</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag high">LC023</div>
+        <h3>Broken requirements include</h3>
+        <p class="small"><strong>Evidence:</strong> A requirements, constraints, or Conda <code>pip:</code> section includes another local dependency file that is missing.</p>
+      </article>
+      <article class="card">
+        <div class="tag high">LC027</div>
+        <h3>Missing local dependency</h3>
+        <p class="small"><strong>Evidence:</strong> A manifest or Conda <code>pip:</code> entry references an editable, file, wheelhouse, or path dependency that is absent from the repo.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC028</div>
+        <h3>Undeclared import</h3>
+        <p class="small"><strong>Evidence:</strong> A notebook or script imports a common third-party package that is missing from supported dependency manifests.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC045</div>
+        <h3>Missing local helper import</h3>
+        <p class="small"><strong>Evidence:</strong> A notebook or script imports a project-local-looking helper module that is absent from the shared repo.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC046</div>
+        <h3>Undocumented accelerator requirement</h3>
+        <p class="small"><strong>Evidence:</strong> Code calls <code>torch.device('cuda')</code> or similar GPU-only APIs, but README/docs never mention CUDA, GPU hardware, or CPU fallback.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC029</div>
+        <h3>Floating Docker base image</h3>
+        <p class="small"><strong>Evidence:</strong> A Dockerfile uses an untagged or moving base image such as <code>python:latest</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC049</div>
+        <h3>Dockerfile skips dependency manifest</h3>
+        <p class="small"><strong>Evidence:</strong> A Python Dockerfile copies the repo, but no visible <code>pip install -r requirements.txt</code>, <code>pip install .</code>, <code>uv sync</code>, or Conda setup step appears.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC024</div>
+        <h3>Undocumented env vars</h3>
+        <p class="small"><strong>Evidence:</strong> Code reads a project-specific environment variable that is absent from README and <code>.env.example</code>.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC041</div>
+        <h3>Interactive rerun blocker</h3>
+        <p class="small"><strong>Evidence:</strong> A notebook or script calls <code>input()</code> or <code>getpass()</code>, blocking non-interactive reruns.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC052</div>
+        <h3>Missing inline script</h3>
+        <p class="small"><strong>Evidence:</strong> A notebook runs <code>%run scripts/preprocess.py</code> or <code>!python scripts/train.py</code>, but that script is absent.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC051</div>
+        <h3>Working-directory mutation</h3>
+        <p class="small"><strong>Evidence:</strong> A notebook or script calls <code>os.chdir(...)</code> or <code>%cd</code>, making relative paths depend on session state.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC025</div>
+        <h3>CI command drift</h3>
+        <p class="small"><strong>Evidence:</strong> A GitHub Actions workflow points to a missing script, dependency file, or Makefile target.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC044</div>
+        <h3>CI verification gap</h3>
+        <p class="small"><strong>Evidence:</strong> A workflow sets up or installs an environment but never runs tests, notebooks, <code>labcheck</code>, or reproduce/check commands.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC026</div>
+        <h3>CI runtime mismatch</h3>
+        <p class="small"><strong>Evidence:</strong> GitHub Actions runs a different Python minor than the repo's exact runtime declaration.</p>
+      </article>
+      <article class="card">
+        <div class="tag medium">LC030</div>
+        <h3>Floating GitHub Action reference</h3>
+        <p class="small"><strong>Evidence:</strong> A workflow uses a moving action ref such as <code>actions/setup-python@main</code>.</p>
+      </article>
     </section>
 
     <h2 class="section-title">Use it in CI</h2>
     <section class="panel">
       <p class="small">
-        The GitHub Action runs the same deterministic audit without secrets, writes a compact scorecard plus the Markdown report into the job summary, emits SARIF for GitHub code-scanning integrations, exposes score outputs for PR summaries or sticky comments, and can produce a static SVG score badge. Start with a soft report artifact, then commit a baseline and turn on <code>fail-on: high</code> when the repo is ready for a reproducibility gate.
+        The GitHub Action runs the same deterministic audit without secrets, writes a compact scorecard plus the Markdown report into the job summary, emits SARIF for GitHub code-scanning integrations, exposes score outputs for PR summaries or sticky comments, and can produce a static SVG score badge plus a maintainer-friendly issue draft. Start with a soft report artifact, then commit a baseline and turn on <code>fail-on: high</code> when the repo is ready for a reproducibility gate.
       </p>
       <div class="code">labcheck init .
 labcheck init . --policy
@@ -424,12 +895,25 @@ labcheck init . --policy
     sarif-path: labcheck-report.sarif
     badge-path: labcheck-badge.svg
     scorecard-path: labcheck-scorecard.md
+    target-fit-path: labcheck-target-fit.md
+    issue-draft-path: labcheck-issue-draft.md
     max-findings: "100"
     fail-on: high
     min-score: "80"</div>
       <div class="audit-links">
         <a class="button primary" href="../docs/github-action.md">Open GitHub Action guide</a>
       </div>
+    </section>
+
+    <h2 class="section-title">Prove cleanup progress</h2>
+    <section class="panel">
+      <p class="small">
+        After a team fixes findings, <code>labcheck compare</code> turns two JSON reports into a before/after note with score deltas, severity deltas, resolved findings, and new findings. That makes cleanup progress easy to paste into a PR, lab handoff update, release note, or founder diligence follow-up.
+      </p>
+      <div class="code">labcheck scan . --format json --output before-labcheck-report.json
+# make fixes
+labcheck scan . --format json --output after-labcheck-report.json
+labcheck compare before-labcheck-report.json after-labcheck-report.json --output labcheck-compare.md</div>
     </section>
 
     <h2 class="section-title">Self-explaining checks</h2>
@@ -457,6 +941,7 @@ labcheck explain LC005</div>
         <div class="tag medium">Public scan</div>
         <h3>ageron/handson-ml3</h3>
         <p class="small">A notebook-heavy ML repo that highlights hidden-state assumptions, portability issues, and visible lineage edges.</p>
+        <p class="small"><strong>Checked-in snapshot:</strong> score 43; 9 high, 14 medium, 25 low findings.</p>
         <div class="audit-links">
           <a class="button secondary" href="../docs/sample-audits/handson-ml3-audit.md">Open audit</a>
         </div>
@@ -465,6 +950,7 @@ labcheck explain LC005</div>
         <div class="tag medium">Stress test</div>
         <h3>jakevdp/PythonDataScienceHandbook</h3>
         <p class="small">A larger educational notebook corpus that currently acts as a strong scale and noise-control stress test for the engine.</p>
+        <p class="small"><strong>Checked-in snapshot:</strong> score 19; 82 high, 118 medium, 120 low findings.</p>
         <div class="audit-links">
           <a class="button secondary" href="../docs/sample-audits/python-data-science-handbook-audit.md">Open audit</a>
         </div>
@@ -474,15 +960,43 @@ labcheck explain LC005</div>
     <h2 class="section-title">Use it for outreach</h2>
     <section class="panel">
       <p class="small">
-        `labcheck` is meant to be easy to share with professors, lab managers, and ML/data founders. Use <code>labcheck scorecard</code> for a one-screen summary, then <code>labcheck pack --zip</code> to generate a complete audit folder and a single archive when someone wants machine-readable artifacts too.
+        `labcheck` is meant to be easy to share with professors, lab managers, maintainers, and ML/data founders. Use <code>labcheck target-fit</code> as a private go/no-go card before cold outreach, <code>labcheck scorecard</code> for a one-screen summary, <code>labcheck issue</code> for a respectful maintainer issue draft, <code>labcheck outreach --audience professor</code> or <code>--audience founder</code> for targeted notes that include a bounded browser-demo link on public GitHub targets, then <code>labcheck pack --zip</code> to generate a complete audit folder and a single archive with <code>MANIFEST.md</code>, machine-readable artifacts, and the full evidence trail.
       </p>
-      <div class="code">labcheck scorecard https://github.com/owner/repo --output labcheck-scorecard.md
+      <div class="code">labcheck demo-link https://github.com/owner/repo --audience professor --output labcheck-demo-link.txt
+labcheck demo-link https://github.com/owner/repo --format markdown --auto-audit --audience professor --output labcheck-demo-link.md
+labcheck target-fit https://github.com/owner/repo --audience professor --output labcheck-target-fit.md
+labcheck scorecard https://github.com/owner/repo --output labcheck-scorecard.md
+labcheck outreach https://github.com/owner/repo --output labcheck-outreach-note.md
+labcheck outreach https://github.com/owner/repo --audience founder --output labcheck-founder-note.md
+labcheck issue https://github.com/owner/repo --output labcheck-issue-draft.md
 labcheck pack https://github.com/owner/repo --output-dir labcheck-audit --zip</div>
       <div class="audit-links">
         <a class="button primary" href="../docs/outreach-playbook.md">Open outreach playbook</a>
+        <a class="button secondary" href="../docs/first-audit.md">Open first audit guide</a>
+        <a class="button secondary" href="../docs/reproducibility-patterns.md">Open pattern gallery</a>
+        <a class="button secondary" href="../docs/scoring-guide.md">Open scoring guide</a>
+        <a class="button secondary" href="../docs/demo-video-script.md">Open demo video script</a>
         <a class="button secondary" href="../docs/launch-kit.md">Open launch kit</a>
+        <a class="button secondary" href="../docs/launch-post-after-action.md">Open after-action checklist</a>
         <a class="button secondary" href="../docs/launch-week-plan.md">Open launch week plan</a>
         <a class="button secondary" href="../docs/outreach-tracker-template.md">Open tracker template</a>
+      </div>
+    </section>
+
+    <h2 class="section-title">Help shape it</h2>
+    <section class="panel">
+      <p class="small">
+        The roadmap is intentionally narrow: better reproducibility evidence, fewer false positives, more useful case studies, and no hosted inference dependency. New contributors can start with small, testable checks or docs improvements.
+      </p>
+      <div class="audit-links">
+        <a class="button primary" href="../docs/roadmap.md">Open roadmap</a>
+        <a class="button secondary" href="../docs/good-first-issues.md">Open good first issues</a>
+        <a class="button secondary" href="../docs/issue-labels.md">Open issue label guide</a>
+        <a class="button secondary" href="../docs/public-triage-board.md">Open triage board template</a>
+        <a class="button secondary" href="../docs/reply-derived-case-study-seed.md">Open case-study seed</a>
+        <a class="button secondary" href="../docs/reply-to-case-study-checklist.md">Open case-study checklist</a>
+        <a class="button secondary" href="../docs/sample-audits/broken-repo-labeled-issue.md">Open labeled issue bundle</a>
+        <a class="button secondary" href="../docs/maintainer-reply-templates.md">Open reply templates</a>
       </div>
     </section>
 
@@ -493,18 +1007,25 @@ labcheck pack https://github.com/owner/repo --output-dir labcheck-audit --zip</d
       </p>
       <div class="audit-links">
         <a class="button primary" href="../docs/public-deploy-guide.md">Open public deploy guide</a>
+        <a class="button secondary" href="../docs/install.md">Open install guide</a>
         <a class="button secondary" href="../docs/faq.md">Open FAQ</a>
       </div>
     </section>
 
     <h2 class="section-title">Try it</h2>
     <section class="panel">
-      <div class="code">git clone https://github.com/ThomasAquinas14/labcheck.git
+      <div class="code">python -m pip install --user pipx
+pipx install git+https://github.com/ThomasAquinas14/labcheck.git
+labcheck scorecard https://github.com/owner/repo
+
+git clone https://github.com/ThomasAquinas14/labcheck.git
 cd labcheck
 python -m pip install -e .
 
 labcheck scan examples/broken-repo --format html --output report.html
 labcheck scorecard examples/broken-repo
+labcheck target-fit examples/broken-repo --audience founder
+labcheck outreach examples/broken-repo --output labcheck-outreach-note.md
 labcheck pack examples/broken-repo --output-dir labcheck-audit --zip
 labcheck scan https://github.com/owner/repo --format markdown --max-findings 50
 labcheck init .

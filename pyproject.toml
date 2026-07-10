@@ -5,31 +5,52 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "labcheck"
 version = "0.1.0"
-description = "A reproducibility auditor for research and ML repositories."
+description = "No-key reproducibility audits for notebook-heavy research and ML repositories."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
   { name = "Thomas Aquinas" }
 ]
-keywords = ["reproducibility", "notebooks", "machine-learning", "research", "ci"]
+keywords = [
+  "reproducibility",
+  "notebooks",
+  "jupyter",
+  "jupyter-notebook",
+  "machine-learning",
+  "research-software",
+  "data-science",
+  "static-analysis",
+  "github-action",
+  "ci",
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
   "Intended Audience :: Developers",
+  "Intended Audience :: Education",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.11",
+  "Topic :: Education",
   "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Testing",
 ]
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/ThomasAquinas14/labcheck"
+Homepage = "https://thomasaquinas14.github.io/labcheck/"
+Documentation = "https://thomasaquinas14.github.io/labcheck/README.md"
+Repository = "https://github.com/ThomasAquinas14/labcheck"
 Issues = "https://github.com/ThomasAquinas14/labcheck/issues"
-Documentation = "https://github.com/ThomasAquinas14/labcheck#readme"
+Demo = "https://thomasaquinas14.github.io/labcheck/demo.html"
+Safety = "https://thomasaquinas14.github.io/labcheck/docs/privacy-and-safety.md"
 
 [project.scripts]
 labcheck = "labcheck.cli:main"

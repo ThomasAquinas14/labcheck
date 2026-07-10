@@ -19,6 +19,14 @@ exclude = [
 disabled_checks = [
   # "LC010",
 ]
+
+# Use targeted suppressions for known, intentional findings that should remain
+# visible everywhere else.
+#
+# [[ignored_findings]]
+# check_id = "LC010"
+# path = "archive/old_experiment.py"
+# reason = "Archival script kept for context, not a supported rerun path."
 """
 
 WORKFLOW_TEMPLATE = """name: labcheck
@@ -26,6 +34,9 @@ WORKFLOW_TEMPLATE = """name: labcheck
 on:
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   audit:
@@ -42,9 +53,12 @@ jobs:
           report-format: markdown
           report-path: labcheck-report.md
           json-path: labcheck-report.json
+          csv-path: labcheck-report.csv
           sarif-path: labcheck-report.sarif
           badge-path: labcheck-badge.svg
           scorecard-path: labcheck-scorecard.md
+          target-fit-path: labcheck-target-fit.md
+          issue-draft-path: labcheck-issue-draft.md
           max-findings: "100"
           fail-on: none
           min-score: ""
@@ -54,12 +68,17 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: labcheck-report
+          if-no-files-found: warn
+          retention-days: 14
           path: |
             labcheck-report.md
             labcheck-report.json
+            labcheck-report.csv
             labcheck-report.sarif
             labcheck-badge.svg
             labcheck-scorecard.md
+            labcheck-target-fit.md
+            labcheck-issue-draft.md
 """
 
 
@@ -79,7 +98,9 @@ Before a notebook, experiment, or result artifact is considered ready to hand of
 - generated outputs should have an obvious producer notebook or script
 - dependencies should be pinned or intentionally bounded
 - the Python runtime version should be declared
-- README commands should point to files that exist
+- README commands should point to files, Python modules, Makefile targets, package scripts, or project scripts that exist
+- README and docs links should point to files that exist, or explain how to obtain external artifacts
+- public/research repos should include clear license and citation metadata
 - randomness should use visible seeds when deterministic comparison matters
 - machine-local paths should be replaced with project-relative paths or documented configuration
 
@@ -89,6 +110,7 @@ Run this before opening a pull request or handing the repo to a new collaborator
 
 ```bash
 labcheck scorecard . --config .labcheck.toml
+labcheck target-fit . --config .labcheck.toml
 labcheck scan . --config .labcheck.toml --format markdown
 ```
 
@@ -122,6 +144,7 @@ Treat findings as reproducibility signals, not blame.
 - Fix high-severity findings first.
 - Prefer documenting unavoidable external artifacts over silently ignoring them.
 - Use `.labcheck.toml` exclusions for archived, generated, or intentionally noisy paths.
+- Prefer targeted `[[ignored_findings]]` entries over disabling an entire check when only one known file is intentional noise.
 - Disable checks only when the repo has a deliberate pattern that would otherwise create repeated low-signal findings.
 
 ## Reviewer checklist

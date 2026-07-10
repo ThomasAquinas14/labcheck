@@ -49,10 +49,35 @@ The first version focuses on high-signal reproducibility and handoff risks:
 - missing input artifacts
 - unpinned dependencies
 - missing Python runtime metadata
-- README commands pointing to missing files
-- absolute machine-local paths
+- conflicting exact Python runtime metadata
+- README commands pointing to missing files, Python modules, Makefile targets, package scripts, or project scripts
+- GitHub Actions workflow commands pointing to missing scripts, dependency files, or Makefile targets
+- GitHub Actions Python versions that conflict with project runtime metadata
+- GitHub Actions workflows that install/setup but never run tests, notebooks, `labcheck`, or reproduce/check commands
+- absolute machine-local paths, including Colab/Kaggle notebook paths
 - unseeded randomness
-- sklearn/pandas `random_state` gaps
+- NumPy Generator seed gaps, sklearn/pandas/XGBoost `random_state` gaps, Optuna sampler seed gaps, JAX PRNG key reuse, PyTorch split/DataLoader generator and worker seed gaps, TensorFlow seed gaps, Polars sampling seed gaps, and output directories missing before save/write calls
+- inline notebook `%pip` / `!pip` installs without package pins
+- inline `apt-get`, `brew`, `apk`, `yum`, or similar OS package installs hidden in notebooks or scripts
+- dependency manifests with no README install/setup step
+- requirements or constraints files that include missing local files
+- editable, file, wheelhouse, or local path dependencies that are missing from the shared repo
+- common imported packages missing from dependency manifests
+- project-local helper imports that are missing from the shared repo
+- floating Docker base image tags such as `latest` or untagged images
+- Python Dockerfiles that copy the repo but skip dependency manifest installation
+- project-specific environment variables with no README or `.env.example`
+- interactive `input()` / `getpass()` prompts that block unattended reruns
+- GPU/CUDA or accelerator-specific code with no documented hardware requirement or CPU fallback
+- mutable remote data URLs such as raw GitHub branch links used in reads or download calls
+- remote download calls that have no explicit timeout and can hang in CI or reviewer reruns
+- stable-looking remote artifacts that are read or downloaded without checksum/hash verification
+- Hugging Face model, dataset, and Hub download calls without `revision=` pins
+- glob/listdir input directories that are missing from the shared repo
+- unsorted glob/listdir/Path.glob input discovery that can reshuffle rows or batches
+- timestamp-derived output filenames that make rerun artifacts harder to compare
+- DVC/Git LFS restore-step gaps
+- floating GitHub Action references such as `owner/action@main`
 - committed outputs with no visible producer
 - disconnected workflow files
 
@@ -88,6 +113,10 @@ Some findings may be intentional. For example, a teaching repo might clear noteb
 
 Use `.labcheck.toml` to exclude archived/generated paths or disable checks that are noisy for your repo.
 
+For the score formula, score bands, and what a high score does not prove, see the [scoring guide](scoring-guide.md).
+
+For small before/after examples of common repo handoff failures, see the [reproducibility pattern gallery](reproducibility-patterns.md).
+
 ---
 
 ## How do I avoid false positives?
@@ -111,6 +140,11 @@ exclude = [
 disabled_checks = [
   # "LC010",
 ]
+
+[[ignored_findings]]
+check_id = "LC010"
+path = "archive/old_experiment.py"
+reason = "Archival script kept for context, not a supported rerun path."
 ```
 
 For CI, create a baseline first and then ratchet:
@@ -154,6 +188,8 @@ Most linters focus on code style, syntax, or package security.
 - do setup instructions still match the repo?
 
 That makes it useful during handoff, review, onboarding, teaching, and diligence.
+
+For a side-by-side positioning table against linters, CI, notebook execution, data-versioning tools, containers, and manual review, see the [comparison guide](comparison.md).
 
 ---
 

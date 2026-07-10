@@ -1,0 +1,72 @@
+- name: severity/high
+  color: b60205
+  description: Blocks reruns, artifact access, install, or unattended execution.
+- name: severity/medium
+  color: d93f0b
+  description: Important reproducibility drift or handoff friction.
+- name: severity/low
+  color: fbca04
+  description: Polish or metadata that improves reviewer confidence.
+- name: category/environment
+  color: 1d76db
+  description: Runtime, dependency, CI, container, or install reproducibility.
+- name: category/determinism
+  color: 5319e7
+  description: Notebook order, hidden state, randomness, or unstable ordering.
+- name: category/artifacts
+  color: 0e8a16
+  description: Inputs, outputs, generated files, data, or provenance.
+- name: category/portability
+  color: 0052cc
+  description: Machine-local paths or platform-specific assumptions.
+- name: category/onboarding
+  color: 5319e7
+  description: README, scripts, workflow, and handoff clarity.
+- name: finding/lc001
+  color: ededed
+  description: Suspicious notebook execution order.
+- name: finding/lc002
+  color: ededed
+  description: Likely hidden notebook state.
+- name: finding/lc005
+  color: ededed
+  description: Referenced input artifact missing from repo.
+- name: finding/lc011
+  color: ededed
+  description: Notebook contains saved error output.
+- name: finding/lc035
+  color: ededed
+  description: Output directory is not created.
+- name: triage/public-audit
+  color: c2e0c6
+  description: Request or result from a public no-key labcheck audit.
+- name: triage/false-positive
+  color: fef2c0
+  description: Finding may be expected, archival, generated, or too noisy.
+- name: triage/good-first-audit
+  color: 7057ff
+  description: Small scoped audit improvement suitable for a first contribution.
+- name: triage/needs-owner
+  color: d4c5f9
+  description: Needs a maintainer, lab member, or package owner to claim scope.
+- name: triage/baseline-ratchet
+  color: bfdadc
+  description: Baseline, suppression, or CI ratchet workflow.
+- name: workflow/cli
+  color: 0e8a16
+  description: Local CLI, reports, scorecards, packs, or compare command.
+- name: workflow/browser-demo
+  color: 1d76db
+  description: Static browser demo or public GitHub URL audit flow.
+- name: workflow/github-action
+  color: 0052cc
+  description: GitHub Action, SARIF, CI gate, or job summary workflow.
+- name: audience/professor
+  color: c5def5
+  description: Useful for labs, teaching repos, students, or research handoff.
+- name: audience/founder
+  color: c5def5
+  description: Useful for ML/data teams, diligence, or customer-facing demos.
+- name: audience/maintainer
+  color: c5def5
+  description: Maintainer-safe wording, issue drafts, and public repo etiquette.

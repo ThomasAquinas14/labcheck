@@ -38,6 +38,8 @@ def test_publish_commands_include_create_push_and_metadata() -> None:
 
     assert commands[0] == "python scripts/release_check.py"
     assert "gh repo create ThomasAquinas14/labcheck --public --source=. --remote=origin --push" in commands
+    assert 'git tag -a v1 -m "labcheck GitHub Action v1"' in commands
+    assert "git push origin v1" in commands
     assert any("gh repo edit ThomasAquinas14/labcheck" in command for command in commands)
     assert any("--add-topic" in command for command in commands)
     assert any("No-key reproducibility audits" in command for command in commands)

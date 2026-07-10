@@ -19,7 +19,7 @@ This creates:
 - `.labcheck.toml`
 - `.github/workflows/labcheck.yml`
 
-The generated workflow uploads scorecard, Markdown, JSON, SARIF, and badge reports without failing CI.
+The generated workflow uploads scorecard, target-fit, issue draft, Markdown, CSV, JSON, SARIF, and badge reports without failing CI. It requests only `contents: read`, so the default setup does not need repository secrets or write permissions. Report artifacts use a short retention window and still upload when you later turn on a failing gate.
 
 ---
 

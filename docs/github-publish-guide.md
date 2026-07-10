@@ -7,8 +7,9 @@ This is the final public step, so keep it deliberate:
 1. verify the release gate
 2. verify local publish readiness
 3. create and push the public repo
-4. set description, homepage, and topics
-5. enable GitHub Pages
+4. create the `v1` GitHub Action tag used by the docs
+5. set description, homepage, and topics
+6. enable GitHub Pages
 
 ---
 
@@ -46,7 +47,20 @@ This creates the public GitHub repository, adds `origin`, and pushes the current
 
 ---
 
-## 4. Set Repo Metadata
+## 4. Create The GitHub Action v1 Tag
+
+The Action examples use `ThomasAquinas14/labcheck@v1`, so publish the major-version tag before sharing the guide:
+
+```bash
+git tag -a v1 -m "labcheck GitHub Action v1"
+git push origin v1
+```
+
+For later releases, move the `v1` tag only when the Action remains backward-compatible.
+
+---
+
+## 5. Set Repo Metadata
 
 ```bash
 gh repo edit ThomasAquinas14/labcheck \
@@ -59,7 +73,7 @@ If the homepage URL is not live yet, set it after the Pages deployment succeeds.
 
 ---
 
-## 5. Enable GitHub Pages
+## 6. Enable GitHub Pages
 
 The repo already includes `.github/workflows/pages.yml`.
 
@@ -79,7 +93,13 @@ https://thomasaquinas14.github.io/labcheck/
 
 ---
 
-## 6. Smoke-Test The Public Links
+## 7. Smoke-Test The Public Links
+
+Run the post-deploy smoke checker:
+
+```bash
+python scripts/check_public_urls.py https://thomasaquinas14.github.io/labcheck/
+```
 
 After Pages deploys, check:
 
@@ -87,13 +107,15 @@ After Pages deploys, check:
 - Browser demo opens.
 - Sample HTML audit opens.
 - GitHub Action guide opens.
+- Package metadata in `pyproject.toml` points `Homepage`, `Documentation`, and `Demo` at the public static site.
+- A workflow can resolve `uses: ThomasAquinas14/labcheck@v1`.
 - Launch kit opens.
 - Public deploy guide opens.
-- The landing page source includes `og:image`, `twitter:image`, and canonical metadata pointing at `https://thomasaquinas14.github.io/labcheck/`.
+- The landing page source includes `og:image`, `twitter:image`, canonical metadata, and JSON-LD structured data pointing at `https://thomasaquinas14.github.io/labcheck/`.
 
 ---
 
-## 7. First Outreach Batch
+## 8. First Outreach Batch
 
 Use the snippets in [launch-kit.md](launch-kit.md) and [outreach-playbook.md](outreach-playbook.md).
 

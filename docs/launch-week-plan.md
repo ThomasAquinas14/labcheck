@@ -31,8 +31,10 @@ After GitHub Pages deploys, verify:
 - sample HTML audit opens
 - README image renders
 - `og:image` and `twitter:image` metadata point to the scorecard preview
+- JSON-LD structured data identifies `labcheck` as a free no-key developer application
 - `action.yml` appears on GitHub
 - CI and Pages workflows are green
+- the demo-video script has been used or adapted for the first launch clip
 
 Do not start outreach until the public links work.
 
@@ -47,7 +49,7 @@ Best angle:
 ```text
 I built labcheck, a no-key reproducibility auditor for notebook-heavy research and ML repos.
 
-It catches hidden notebook state, missing input artifacts, stale README commands, unseeded randomness, and unclear output provenance.
+It catches hidden notebook state, missing input artifacts, missing globbed data directories, unsorted file discovery, unpinned Hugging Face artifacts, interactive rerun blockers, missing generated output directories, timestamped output drift, missing local dependency paths, dependency/CI drift, stale README commands, NumPy/ML split/seed drift, unseeded randomness, and unclear output provenance.
 
 No API keys. No hosted backend. No inference bill.
 
@@ -57,6 +59,10 @@ Sample audit: <sample-audit-url>
 ```
 
 Then add the post URL to [outreach-tracker-template.md](outreach-tracker-template.md) so you can reuse it in follow-ups.
+
+If you are posting video, use [demo-video-script.md](demo-video-script.md) and keep the first version under 90 seconds.
+
+After posting, fill out [launch-post-after-action.md](launch-post-after-action.md) so the first public proof turns into baseline numbers, reply categories, and one concrete follow-up.
 
 ---
 
@@ -119,7 +125,10 @@ Good issue titles:
 - `Reduce LC002 noise for tutorial notebooks with shared setup cells`
 - `Add DVC dataset provenance hints`
 - `Add policy preset for course repositories`
-- `Improve README command extraction for make targets`
+- `Replace reply-derived case-study seed with first real public reply`
+
+Use [reply-to-case-study-checklist.md](reply-to-case-study-checklist.md) before turning a maintainer, professor, or founder reply into a public case-study note.
+Use [reply-derived-case-study-seed.md](reply-derived-case-study-seed.md) as the seed format until a real public reply exists.
 
 ---
 
@@ -134,12 +143,14 @@ The 5 most common reproducibility failures I saw while testing labcheck on noteb
 
 1. Hidden notebook state
 2. Missing input artifacts
-3. README commands pointing to deleted files
+3. README commands pointing to missing scripts, Python modules, Makefile targets, package scripts, or project scripts
 4. Results committed without producer scripts
 5. Unseeded sampling/splits
 ```
 
 Link the repo at the end, after the useful content.
+
+Use the after-action notes from [launch-post-after-action.md](launch-post-after-action.md) to choose the examples. Do not write a vague "we launched" recap if the first post produced sharper evidence.
 
 ---
 

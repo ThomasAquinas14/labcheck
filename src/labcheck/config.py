@@ -9,9 +9,39 @@ DEFAULT_CONFIG_NAME = ".labcheck.toml"
 
 
 @dataclass(slots=True)
+class IgnoredFinding:
+    check_id: str
+    path: str
+    reason: str = ""
+
+
+@dataclass(slots=True)
 class LabcheckConfig:
     exclude: list[str] = field(default_factory=list)
     disabled_checks: set[str] = field(default_factory=set)
+    ignored_findings: list[IgnoredFinding] = field(default_factory=list)
+
+
+def _load_ignored_findings(data: dict) -> list[IgnoredFinding]:
+    ignored_findings = data.get("ignored_findings", [])
+    if not isinstance(ignored_findings, list):
+        raise ValueError("Invalid labcheck config: ignored_findings must be a list of tables")
+
+    parsed: list[IgnoredFinding] = []
+    for index, item in enumerate(ignored_findings, start=1):
+        if not isinstance(item, dict):
+            raise ValueError("Invalid labcheck config: each ignored_findings entry must be a table")
+        check_id = item.get("check_id")
+        path = item.get("path")
+        reason = item.get("reason", "")
+        if not isinstance(check_id, str) or not check_id.strip():
+            raise ValueError(f"Invalid labcheck config: ignored_findings entry {index} needs a check_id")
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError(f"Invalid labcheck config: ignored_findings entry {index} needs a path")
+        if not isinstance(reason, str):
+            raise ValueError(f"Invalid labcheck config: ignored_findings entry {index} reason must be a string")
+        parsed.append(IgnoredFinding(check_id=check_id.strip().upper(), path=path.strip(), reason=reason.strip()))
+    return parsed
 
 
 def load_config(path: Path) -> LabcheckConfig:
@@ -25,6 +55,7 @@ def load_config(path: Path) -> LabcheckConfig:
     return LabcheckConfig(
         exclude=exclude,
         disabled_checks={check_id.strip().upper() for check_id in disabled_checks if check_id.strip()},
+        ignored_findings=_load_ignored_findings(data),
     )
 
 
@@ -71,3 +102,11 @@ def is_excluded(path: Path, repo_root: Path, config: LabcheckConfig) -> bool:
 
 def is_check_disabled(check_id: str, config: LabcheckConfig) -> bool:
     return check_id.upper() in config.disabled_checks
+
+
+def is_finding_ignored(check_id: str, file_path: str, config: LabcheckConfig) -> bool:
+    normalized_check_id = check_id.strip().upper()
+    return any(
+        ignored.check_id == normalized_check_id and _matches_exclude_pattern(file_path, ignored.path)
+        for ignored in config.ignored_findings
+    )

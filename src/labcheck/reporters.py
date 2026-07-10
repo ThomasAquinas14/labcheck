@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
 from html import escape
+import io
 import json
 
+from .demo_links import build_demo_link, github_repo_slug, render_demo_link
+from .loaders import is_github_repo_url
 from .models import Finding, Report
 
 
@@ -42,7 +46,80 @@ SARIF_LEVELS = {
     "low": "note",
 }
 
+TRIAGE_OWNER_BY_CATEGORY = {
+    "environment": "environment/runtime owner",
+    "environment_rebuildability": "environment/runtime owner",
+    "determinism": "notebook/workflow owner",
+    "notebook_determinism": "notebook/workflow owner",
+    "artifacts": "data/artifact owner",
+    "artifact_availability": "data/artifact owner",
+    "portability": "repo portability owner",
+    "onboarding": "docs/CI owner",
+    "onboarding_readiness": "docs/CI owner",
+}
+
 DEFAULT_HUMAN_FINDING_LIMIT = 100
+
+REVIEW_BOUNDARY_TEXT = (
+    "This is a static, no-key first-pass audit. It does not execute the project code by default, "
+    "does not upload source files to a hosted backend, and does not prove scientific validity; "
+    "use it to prioritize rerun and handoff risks before deeper verification."
+)
+
+COMPLETE_OUTPUTS_NOTE = "JSON, CSV, and SARIF outputs remain complete."
+
+OUTREACH_AUDIENCES = {
+    "general": {
+        "subject": "Quick reproducibility scorecard",
+        "intro": (
+            "to see how easily a new student, reviewer, maintainer, "
+            "or engineer could rerun it from a fresh clone."
+        ),
+        "offer": (
+            "If useful, I can send the full scorecard/audit bundle, open a small issue, "
+            "or help turn the top finding into a concrete fix."
+        ),
+    },
+    "professor": {
+        "subject": "Quick lab reproducibility handoff check",
+        "intro": (
+            "to see how easily a new student, collaborator, or reviewer could rerun it "
+            "from a fresh clone without hidden local state."
+        ),
+        "offer": (
+            "If useful, I can send the full scorecard/audit bundle or turn the top finding "
+            "into a small lab handoff checklist."
+        ),
+    },
+    "founder": {
+        "subject": "Quick ML repo onboarding and diligence check",
+        "intro": (
+            "to see how easily a new engineer, technical lead, or diligence reviewer could "
+            "rebuild the workflow from a fresh clone."
+        ),
+        "offer": (
+            "If useful, I can send the full scorecard/audit bundle or help convert the top "
+            "finding into an onboarding-ready fix."
+        ),
+    },
+    "maintainer": {
+        "subject": "Quick contributor reproducibility check",
+        "intro": (
+            "to see how easily a new contributor or issue reporter could reproduce the "
+            "workflow from a fresh clone."
+        ),
+        "offer": (
+            "If useful, I can open a scoped issue or PR that addresses the top finding first."
+        ),
+    },
+}
+
+TARGET_FIT_AUDIENCE_ASKS = {
+    "general": "If useful, I can send the scorecard or a zipped audit bundle for review.",
+    "professor": "If useful, I can run this as a pre-handoff scorecard for one public lab repo.",
+    "founder": "If useful, I can turn the top finding into an onboarding-ready fix.",
+    "maintainer": "If useful, I can open a scoped issue for the first top risk.",
+}
 
 
 @dataclass(slots=True)
@@ -54,6 +131,47 @@ class RiskSummary:
     count: int
     affected_files: list[str]
     first_finding: Finding
+
+
+@dataclass(slots=True)
+class ComposeReferenceSummary:
+    compose_file: str
+    check_id: str
+    title: str
+    severity: str
+    missing_references: list[str]
+
+
+COMPOSE_REFERENCE_CHECK_IDS = frozenset(
+    {
+        "LC005",
+        "LC065",
+        "LC066",
+        "LC067",
+        "LC068",
+        "LC069",
+        "LC070",
+        "LC071",
+        "LC072",
+        "LC073",
+    }
+)
+
+COMPOSE_REFERENCE_PREFIXES = (
+    "Docker Compose bind source(s) ",
+    "Docker Compose build context(s) ",
+    "Docker Compose Dockerfile(s) ",
+    "Docker Compose depends_on service(s) ",
+    "Docker Compose network(s) ",
+    "Docker Compose healthcheck script(s) ",
+    "Docker Compose secret/config file(s) ",
+    "Docker Compose service env_file(s) ",
+    "Docker Compose extends file(s) ",
+    "Docker Compose extends service target(s) ",
+    "Docker Compose include file(s) ",
+    "Docker Compose service label_file(s) ",
+    "Docker Compose develop watch path(s) ",
+)
 
 
 def _severity_counts(report: Report) -> dict[str, int]:
@@ -111,6 +229,63 @@ def _top_risks(report: Report, limit: int = 5) -> list[RiskSummary]:
     )[:limit]
 
 
+def _split_compose_references(raw_references: str) -> list[str]:
+    return [reference.strip() for reference in raw_references.split(",") if reference.strip()]
+
+
+def _compose_missing_references(evidence: str) -> list[str]:
+    references: list[str] = []
+    for prefix in COMPOSE_REFERENCE_PREFIXES:
+        search_start = 0
+        while True:
+            prefix_start = evidence.find(prefix, search_start)
+            if prefix_start < 0:
+                break
+            value_start = prefix_start + len(prefix)
+            tail = evidence[value_start:]
+            value_end = tail.find(" are ")
+            if value_end < 0:
+                search_start = value_start
+                continue
+            references.extend(_split_compose_references(tail[:value_end]))
+            search_start = value_start + value_end
+    return list(dict.fromkeys(references))
+
+
+def _compose_reference_summaries(report: Report) -> list[ComposeReferenceSummary]:
+    grouped: dict[tuple[str, str, str, str], list[str]] = {}
+    for finding in report.findings:
+        if finding.check_id not in COMPOSE_REFERENCE_CHECK_IDS:
+            continue
+        references = _compose_missing_references(finding.evidence)
+        if not references:
+            continue
+        key = (finding.file_path, finding.check_id, finding.title, finding.severity)
+        grouped.setdefault(key, [])
+        for reference in references:
+            if reference not in grouped[key]:
+                grouped[key].append(reference)
+
+    summaries = [
+        ComposeReferenceSummary(
+            compose_file=compose_file,
+            check_id=check_id,
+            title=title,
+            severity=severity,
+            missing_references=references,
+        )
+        for (compose_file, check_id, title, severity), references in grouped.items()
+    ]
+    return sorted(
+        summaries,
+        key=lambda summary: (
+            summary.compose_file,
+            SEVERITY_RANK.get(summary.severity, 99),
+            summary.check_id,
+        ),
+    )
+
+
 def _category_score_entries(report: Report) -> list[tuple[str, int, str]]:
     return [
         (label, int(getattr(report.scores, field_name)), CATEGORY_HELP[field_name])
@@ -131,9 +306,114 @@ def _scorecard_signal(report: Report, severities: dict[str, int]) -> str:
     return "Needs reproducibility work before handoff; start with the top risks below."
 
 
+def _target_fit_score(report: Report, audience: str) -> tuple[int, list[str]]:
+    severities = _severity_counts(report)
+    weakest_label, weakest_score, _weakest_help = min(_category_score_entries(report), key=lambda entry: entry[1])
+    score = 0
+    reasons: list[str] = []
+
+    def add(points: int, reason: str) -> None:
+        nonlocal score
+        score += points
+        reasons.append(reason)
+
+    if report.summary.notebooks > 0:
+        add(2, f"Notebook-heavy workflow: {_pluralize(report.summary.notebooks, 'notebook')} found.")
+    if report.summary.python_files > 0:
+        add(1, f"Code-backed workflow: {_pluralize(report.summary.python_files, 'Python file')} found.")
+    if report.summary.findings_count > 0:
+        add(1, f"Concrete audit hook: {_pluralize(report.summary.findings_count, 'finding')} to discuss.")
+    if severities["high"] > 0:
+        add(2, f"Clear handoff risk: {_pluralize(severities['high'], 'high-severity finding')}.")
+    elif severities["medium"] > 0:
+        add(1, f"Moderate handoff risk: {_pluralize(severities['medium'], 'medium-severity finding')}.")
+    if report.scores.overall_score < 85:
+        add(1, f"Visible improvement room: overall score is {report.scores.overall_score}/100.")
+    if weakest_score <= 70:
+        add(1, f"Narrow first angle: weakest area is {weakest_label} at {weakest_score}/100.")
+    if is_github_repo_url(report.summary.target):
+        add(1, "Public demo ready: target can be opened in the browser demo.")
+
+    if audience == "professor":
+        if report.summary.notebooks > 0:
+            add(1, "Professor fit: notebook workflows are easy to frame as student handoff risk.")
+        if report.scores.notebook_determinism < 85 or report.scores.artifact_availability < 85:
+            add(1, "Professor fit: notebook or artifact score leaves room for a lab handoff checklist.")
+    elif audience == "founder":
+        if report.scores.environment_rebuildability < 85 or report.scores.onboarding_readiness < 85:
+            add(1, "Founder fit: onboarding or rebuildability score maps to engineering ramp-up risk.")
+        if severities["high"] > 0:
+            add(1, "Founder fit: high-severity findings create a concrete first-fix offer.")
+    elif audience == "maintainer":
+        if report.summary.findings_count > 0:
+            add(1, "Maintainer fit: findings can be converted into a small issue or PR.")
+        if is_github_repo_url(report.summary.target):
+            add(1, "Maintainer fit: public GitHub target makes the demo and issue draft easy to share.")
+    elif report.summary.findings_count > 0:
+        add(1, "General fit: there is a clear first follow-up instead of a vague cold message.")
+
+    return min(score, 10), reasons
+
+
+def _target_fit_recommendation(score: int) -> str:
+    if score >= 8:
+        return "strong outreach candidate"
+    if score >= 5:
+        return "promising candidate, but use a narrow ask"
+    return "weak outreach candidate unless you have extra context"
+
+
+def _public_demo_markdown_link(target: str) -> str | None:
+    if not is_github_repo_url(target) or github_repo_slug(target) is None:
+        return None
+    return render_demo_link(build_demo_link(target, auto_audit=True), "markdown")
+
+
 def _remediation_intro(risk: RiskSummary) -> str:
     scope = f"{_pluralize(risk.count, 'finding')} across {_pluralize(len(risk.affected_files), 'file')}"
     return f"Fix {risk.check_id} first because it affects {scope}."
+
+
+def _explain_commands(risks: list[RiskSummary], limit: int = 3) -> list[str]:
+    seen: set[str] = set()
+    commands: list[str] = []
+    for risk in risks:
+        if risk.check_id in seen:
+            continue
+        seen.add(risk.check_id)
+        commands.append(f"labcheck explain {risk.check_id}")
+        if len(commands) >= limit:
+            break
+    return commands
+
+
+def _next_step_entries(
+    report: Report,
+    risks: list[RiskSummary],
+    *,
+    include_full_report: bool,
+) -> list[tuple[str, str]]:
+    entries: list[tuple[str, str]] = []
+    if include_full_report:
+        entries.append(
+            ("Full Markdown report", f"labcheck scan {report.summary.target} --format markdown")
+        )
+    entries.extend(
+        [
+            ("Scorecard summary", f"labcheck scorecard {report.summary.target}"),
+            (
+                "Sortable triage CSV",
+                f"labcheck scan {report.summary.target} --format csv --output labcheck-findings.csv",
+            ),
+            (
+                "Shareable audit bundle",
+                f"labcheck pack {report.summary.target} --output-dir labcheck-audit --zip",
+            ),
+        ]
+    )
+    if risks:
+        entries.append(("Explain top finding", f"labcheck explain {risks[0].check_id}"))
+    return entries
 
 
 def _pluralize(count: int, singular: str, plural: str | None = None) -> str:
@@ -149,6 +429,10 @@ def _visible_findings(report: Report, max_findings: int | None) -> tuple[list[Fi
 
 def _markdown_cell(value: str) -> str:
     return value.replace("\n", " ").replace("|", "\\|")
+
+
+def _suggested_triage_owner(category: str) -> str:
+    return TRIAGE_OWNER_BY_CATEGORY.get(category, "repo maintainer")
 
 
 def _display_label(raw_label: str) -> str:
@@ -213,6 +497,7 @@ def _render_graph_svg(report: Report) -> str:
 def render_text(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING_LIMIT) -> str:
     severities = _severity_counts(report)
     risks = _top_risks(report)
+    compose_summaries = _compose_reference_summaries(report)
     visible_findings, omitted_findings = _visible_findings(report, max_findings)
     lines = [
         f"Target: {report.summary.target}",
@@ -227,6 +512,9 @@ def render_text(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
         "",
         f"Severity Mix: {severities['high']} high, {severities['medium']} medium, {severities['low']} low",
         "",
+        "Review Boundary:",
+        REVIEW_BOUNDARY_TEXT,
+        "",
         "Top Risks:",
     ]
     if risks:
@@ -237,6 +525,21 @@ def render_text(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
     else:
         lines.append("- No top risks")
 
+    if compose_summaries:
+        lines.extend(["", "Docker Compose Reference Summary:"])
+        current_file = ""
+        for summary in compose_summaries:
+            if summary.compose_file != current_file:
+                current_file = summary.compose_file
+                lines.append(f"- {summary.compose_file}:")
+            references = ", ".join(summary.missing_references)
+            lines.append(f"  - {summary.check_id} {summary.title}: {references}")
+
+    explain_commands = _explain_commands(risks)
+    if explain_commands:
+        lines.extend(["", "Understand Finding Codes:"])
+        lines.extend(f"- {command}" for command in explain_commands)
+
     lines.extend(["", "Remediation Plan:"])
     if risks:
         for index, risk in enumerate(risks, start=1):
@@ -244,6 +547,12 @@ def render_text(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
             lines.append(f"   Suggested fix: {risk.first_finding.suggested_fix}")
     else:
         lines.append("- No remediation needed")
+
+    lines.extend(["", "Next Steps:"])
+    lines.extend(
+        f"- {label}: {command}"
+        for label, command in _next_step_entries(report, risks, include_full_report=True)
+    )
 
     lines.extend(
         [
@@ -275,6 +584,7 @@ def render_text(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
 def render_markdown(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING_LIMIT) -> str:
     severities = _severity_counts(report)
     risks = _top_risks(report)
+    compose_summaries = _compose_reference_summaries(report)
     visible_findings, omitted_findings = _visible_findings(report, max_findings)
     lines = [
         "# labcheck Report",
@@ -282,6 +592,10 @@ def render_markdown(report: Report, max_findings: int | None = DEFAULT_HUMAN_FIN
         f"- Target: `{report.summary.target}`",
         f"- Overall Score: **{report.scores.overall_score}**",
         f"- Severity Mix: **{severities['high']} high**, **{severities['medium']} medium**, **{severities['low']} low**",
+        "",
+        "## Review Boundary",
+        "",
+        REVIEW_BOUNDARY_TEXT,
         "",
         "## Scores",
         "",
@@ -312,6 +626,35 @@ def render_markdown(report: Report, max_findings: int | None = DEFAULT_HUMAN_FIN
     else:
         lines.append("No top risks.")
 
+    if compose_summaries:
+        lines.extend(
+            [
+                "",
+                "## Docker Compose Reference Summary",
+                "",
+                "| Compose file | Check | Missing references |",
+                "|---|---|---|",
+            ]
+        )
+        for summary in compose_summaries:
+            references = ", ".join(f"`{_markdown_cell(reference)}`" for reference in summary.missing_references)
+            lines.append(
+                f"| `{_markdown_cell(summary.compose_file)}` | `{summary.check_id}` {_markdown_cell(summary.title)} | {references} |"
+            )
+
+    explain_commands = _explain_commands(risks)
+    if explain_commands:
+        lines.extend(
+            [
+                "",
+                "## Understand Finding Codes",
+                "",
+                "Run these commands for plain-language context, why the finding matters, and the expected fix:",
+                "",
+            ]
+        )
+        lines.extend(f"- `{command}`" for command in explain_commands)
+
     lines.extend(
         [
             "",
@@ -331,6 +674,12 @@ def render_markdown(report: Report, max_findings: int | None = DEFAULT_HUMAN_FIN
             )
     else:
         lines.append("No remediation needed.")
+
+    lines.extend(["", "## Next Steps", ""])
+    lines.extend(
+        f"- {label}: `{command}`"
+        for label, command in _next_step_entries(report, risks, include_full_report=False)
+    )
 
     lines.extend(
         [
@@ -355,7 +704,7 @@ def render_markdown(report: Report, max_findings: int | None = DEFAULT_HUMAN_FIN
             [
                 f"Showing first {len(visible_findings)} findings; {omitted_findings} omitted.",
                 "",
-                "Use `--max-findings all` to include every detail in human-readable reports. JSON and SARIF outputs remain complete.",
+                f"Use `--max-findings all` to include every detail in human-readable reports. {COMPLETE_OUTPUTS_NOTE}",
                 "",
             ]
         )
@@ -386,6 +735,7 @@ def render_scorecard(report: Report) -> str:
     """Render a compact Markdown scorecard for PR comments, outreach, and handoff notes."""
     severities = _severity_counts(report)
     risks = _top_risks(report, limit=3)
+    compose_summaries = _compose_reference_summaries(report)
     category_scores = _category_score_entries(report)
     weakest_label, weakest_score, weakest_help = min(category_scores, key=lambda entry: entry[1])
     lines = [
@@ -407,6 +757,10 @@ def render_scorecard(report: Report) -> str:
         "",
         _scorecard_signal(report, severities),
         "",
+        "## Review Boundary",
+        "",
+        REVIEW_BOUNDARY_TEXT,
+        "",
         "## Top Risks",
         "",
     ]
@@ -421,6 +775,22 @@ def render_scorecard(report: Report) -> str:
     else:
         lines.append("No top risks.")
 
+    if compose_summaries:
+        lines.extend(
+            [
+                "",
+                "## Docker Compose Reference Summary",
+                "",
+                "| Compose file | Check | Missing references |",
+                "|---|---|---|",
+            ]
+        )
+        for summary in compose_summaries:
+            references = ", ".join(f"`{_markdown_cell(reference)}`" for reference in summary.missing_references)
+            lines.append(
+                f"| `{_markdown_cell(summary.compose_file)}` | `{summary.check_id}` {_markdown_cell(summary.title)} | {references} |"
+            )
+
     lines.extend(["", "## First Fixes", ""])
     if risks:
         for index, risk in enumerate(risks, start=1):
@@ -432,10 +802,250 @@ def render_scorecard(report: Report) -> str:
     lines.extend(
         [
             "",
-            "## Next Step",
+            "## Next Steps",
             "",
-            f"- Full Markdown report: `labcheck scan {report.summary.target} --format markdown`",
-            f"- Shareable audit bundle: `labcheck pack {report.summary.target} --output-dir labcheck-audit --zip`",
+        ]
+    )
+    lines.extend(
+        f"- {label}: `{command}`"
+        for label, command in _next_step_entries(report, risks, include_full_report=True)
+    )
+    return "\n".join(lines)
+
+
+def render_target_fit(report: Report, audience: str = "general") -> str:
+    """Render an outreach target-fit card from static audit evidence."""
+    normalized_audience = audience if audience in OUTREACH_AUDIENCES else "general"
+    severities = _severity_counts(report)
+    risks = _top_risks(report, limit=1)
+    score, reasons = _target_fit_score(report, normalized_audience)
+    recommendation = _target_fit_recommendation(score)
+    top_risk = risks[0] if risks else None
+    demo_link = _public_demo_markdown_link(report.summary.target)
+
+    lines = [
+        "# labcheck Target Fit",
+        "",
+        f"- Target: `{report.summary.target}`",
+        f"- Audience: `{normalized_audience}`",
+        f"- Fit score: **{score}/10**",
+        f"- Recommendation: **{recommendation}**",
+        (
+            f"- Findings: **{report.summary.findings_count}** "
+            f"(`{severities['high']}` high, `{severities['medium']}` medium, `{severities['low']}` low)"
+        ),
+        f"- Overall score: **{report.scores.overall_score}/100**",
+        "",
+        "## Why This Target Fits",
+        "",
+    ]
+    if reasons:
+        lines.extend(f"- {reason}" for reason in reasons)
+    else:
+        lines.append("- No strong static outreach signal was found; prioritize warmer context before reaching out.")
+
+    lines.extend(["", "## Best Outreach Hook", ""])
+    if top_risk:
+        lines.extend(
+            [
+                f"- Top risk: `{top_risk.check_id}` - {top_risk.title}.",
+                f"- Scope: {_pluralize(top_risk.count, 'finding')} across {_pluralize(len(top_risk.affected_files), 'file')}.",
+                f"- First evidence: {top_risk.first_finding.file_path}: {top_risk.first_finding.evidence}",
+            ]
+        )
+    else:
+        lines.append("- No top risk found. Lead with a positive handoff scorecard or skip cold outreach.")
+
+    if demo_link:
+        lines.extend(
+            [
+                "",
+                "## Shareable Demo",
+                "",
+                f"- Browser demo: {demo_link}",
+                "- Demo scope: bounded public GitHub files only; use the CLI for the full audit.",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Suggested Ask",
+            "",
+            TARGET_FIT_AUDIENCE_ASKS[normalized_audience],
+            "",
+            "## Safe Framing",
+            "",
+            REVIEW_BOUNDARY_TEXT,
+            "",
+            "## Next Commands",
+            "",
+            f"- Scorecard: `labcheck scorecard {report.summary.target}`",
+            (
+                f"- Outreach note: `labcheck outreach {report.summary.target} "
+                f"--audience {normalized_audience} --output labcheck-outreach-note.md`"
+            ),
+            f"- Audit bundle: `labcheck pack {report.summary.target} --output-dir labcheck-audit --zip`",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def render_outreach_note(
+    report: Report,
+    recipient: str = "[Name]",
+    sender: str = "[Your name]",
+    audience: str = "general",
+) -> str:
+    """Render a respectful, ready-to-edit outreach note from a report."""
+    profile = OUTREACH_AUDIENCES.get(audience, OUTREACH_AUDIENCES["general"])
+    severities = _severity_counts(report)
+    risks = _top_risks(report, limit=1)
+    signal = _scorecard_signal(report, severities)
+    top_risk = risks[0] if risks else None
+    demo_link = _public_demo_markdown_link(report.summary.target)
+    top_risk_line = (
+        f"The first thing I would look at is `{top_risk.check_id}` ({top_risk.title}), "
+        f"which appears as {_pluralize(top_risk.count, 'finding')} across "
+        f"{_pluralize(len(top_risk.affected_files), 'file')}."
+        if top_risk
+        else "I did not find a top reproducibility risk in the scanned files."
+    )
+    score_context = (
+        "This is not a scientific-validity judgment; it is a handoff/readiness signal based on static evidence "
+        "in the repository."
+    )
+    lines = [
+        "# labcheck Outreach Note",
+        "",
+        f"Subject: {profile['subject']} for `{report.summary.target}`",
+        "",
+        f"Hi {recipient},",
+        "",
+        (
+            "I ran `labcheck`, a no-key static reproducibility auditor, on "
+            f"`{report.summary.target}` {profile['intro']}"
+        ),
+        "",
+        f"- Overall score: **{report.scores.overall_score}/100**",
+        (
+            f"- Findings: **{report.summary.findings_count}** "
+            f"(`{severities['high']}` high, `{severities['medium']}` medium, `{severities['low']}` low)"
+        ),
+        f"- Triage signal: {signal}",
+        f"- Top risk: {top_risk_line}",
+    ]
+    if demo_link:
+        lines.extend(
+            [
+                f"- Browser demo: {demo_link}",
+                "- Demo scope: bounded public GitHub files only; use the CLI for the full audit.",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            score_context,
+            "",
+            profile["offer"],
+            "",
+            f"Best,\n{sender}",
+            "",
+            "Generated by `labcheck` with deterministic local checks. No API key or hosted backend was used.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def render_issue_draft(report: Report) -> str:
+    """Render a maintainer-friendly GitHub issue draft from a report."""
+    severities = _severity_counts(report)
+    risks = _top_risks(report, limit=3)
+    signal = _scorecard_signal(report, severities)
+    demo_link = _public_demo_markdown_link(report.summary.target)
+    lines = [
+        "# labcheck Issue Draft",
+        "",
+        f"Suggested title: Reproducibility handoff gaps in `{report.summary.target}`",
+        "",
+        "## Context",
+        "",
+        (
+            "I ran `labcheck`, a no-key static reproducibility auditor, on this repository to look for "
+            "fresh-clone handoff issues such as hidden notebook state, missing inputs, dependency drift, "
+            "stale setup commands, and unclear generated artifacts."
+        ),
+        "",
+        (
+            "This is not a scientific-validity judgment, and `labcheck` does not execute the project code by default. "
+            "Please treat this as a lightweight maintainer handoff signal; close it if the findings are expected, "
+            "out of scope, or already documented elsewhere."
+        ),
+        "",
+        "## Summary",
+        "",
+        f"- Target: `{report.summary.target}`",
+        f"- Overall score: **{report.scores.overall_score}/100**",
+        (
+            f"- Findings: **{report.summary.findings_count}** "
+            f"(`{severities['high']}` high, `{severities['medium']}` medium, `{severities['low']}` low)"
+        ),
+        f"- Triage signal: {signal}",
+        "",
+        "## Suggested Triage",
+        "",
+    ]
+    if risks:
+        for index, risk in enumerate(risks, start=1):
+            first = risk.first_finding
+            lines.extend(
+                [
+                    f"### {index}. `{risk.check_id}` - {risk.title}",
+                    "",
+                    f"- Severity: `{risk.severity}`",
+                    f"- Scope: {_pluralize(risk.count, 'finding')} across {_pluralize(len(risk.affected_files), 'file')}",
+                    f"- First evidence: `{first.file_path}` - {_markdown_cell(first.evidence)}",
+                    f"- Why it matters: {_markdown_cell(first.why_it_matters)}",
+                    f"- Suggested fix: {_markdown_cell(first.suggested_fix)}",
+                    "",
+                ]
+            )
+    else:
+        lines.extend(
+            [
+                "No reproducibility risks were found in the scanned files.",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## Reproduce This Audit",
+            "",
+        ]
+    )
+    if demo_link:
+        lines.extend(
+            [
+                f"- Browser demo: {demo_link}",
+                "- Note: the browser demo audits a bounded public-file snapshot; use the CLI commands below for the full audit.",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "```bash",
+            f"labcheck scorecard {report.summary.target}",
+            f"labcheck scan {report.summary.target} --format markdown",
+            "```",
+            "",
+            "## Maintainer Notes",
+            "",
+            "- If a finding is real, the fastest path is usually to fix or document the first top-risk item.",
+            "- If a finding is intentional, document the exception or add it to a `labcheck` baseline/config.",
+            "- If this issue is too broad, split out the first top-risk item and close the rest.",
+            "",
+            "Generated by `labcheck` with deterministic local checks. No API key or hosted backend was used.",
         ]
     )
     return "\n".join(lines)
@@ -443,6 +1053,47 @@ def render_scorecard(report: Report) -> str:
 
 def render_json(report: Report) -> str:
     return json.dumps(report.to_dict(), indent=2)
+
+
+def render_csv(report: Report) -> str:
+    """Render findings as a spreadsheet-friendly CSV table."""
+    output = io.StringIO(newline="")
+    fieldnames = [
+        "target",
+        "overall_score",
+        "status",
+        "owner",
+        "suggested_owner",
+        "check_id",
+        "title",
+        "severity",
+        "category",
+        "file_path",
+        "evidence",
+        "why_it_matters",
+        "suggested_fix",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames, lineterminator="\n")
+    writer.writeheader()
+    for finding in report.findings:
+        writer.writerow(
+            {
+                "target": report.summary.target,
+                "overall_score": report.scores.overall_score,
+                "status": "",
+                "owner": "",
+                "suggested_owner": _suggested_triage_owner(finding.category),
+                "check_id": finding.check_id,
+                "title": finding.title,
+                "severity": finding.severity,
+                "category": finding.category,
+                "file_path": finding.file_path,
+                "evidence": finding.evidence,
+                "why_it_matters": finding.why_it_matters,
+                "suggested_fix": finding.suggested_fix,
+            }
+        )
+    return output.getvalue()
 
 
 def _badge_color(score: int) -> str:
@@ -557,6 +1208,7 @@ def render_sarif(report: Report) -> str:
 def render_html(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING_LIMIT) -> str:
     severities = _severity_counts(report)
     risks = _top_risks(report)
+    compose_summaries = _compose_reference_summaries(report)
     visible_findings, omitted_findings = _visible_findings(report, max_findings)
     score_cards = [
         ("Environment Rebuildability", report.scores.environment_rebuildability, CATEGORY_HELP["environment_rebuildability"]),
@@ -592,6 +1244,31 @@ def render_html(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
         for risk in risks
     ) or "<p>No top risks.</p>"
 
+    compose_items = "".join(
+        f"""
+        <tr>
+          <td><code>{escape(summary.compose_file)}</code></td>
+          <td><code>{escape(summary.check_id)}</code> {escape(summary.title)}</td>
+          <td>{", ".join(f"<code>{escape(reference)}</code>" for reference in summary.missing_references)}</td>
+        </tr>
+        """
+        for summary in compose_summaries
+    )
+    compose_summary_section = (
+        f"""
+    <section class="panel">
+      <h2>Docker Compose Reference Summary</h2>
+      <p>Grouped view of Compose checks that reference missing local files, directories, services, or networks.</p>
+      <table>
+        <thead><tr><th>Compose file</th><th>Check</th><th>Missing references</th></tr></thead>
+        <tbody>{compose_items}</tbody>
+      </table>
+    </section>
+        """
+        if compose_summaries
+        else ""
+    )
+
     remediation_markup = "".join(
         f"""
         <article class="remediation-item severity-{escape(risk.severity)}">
@@ -605,6 +1282,11 @@ def render_html(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
         """
         for index, risk in enumerate(risks, start=1)
     ) or "<p>No remediation needed.</p>"
+
+    next_steps_markup = "".join(
+        f"<li><strong>{escape(label)}:</strong> <code>{escape(command)}</code></li>"
+        for label, command in _next_step_entries(report, risks, include_full_report=False)
+    )
 
     empty_finding_message = "<p>No detailed findings shown.</p>" if omitted_findings else "<p>No findings.</p>"
     finding_cards = "".join(
@@ -628,7 +1310,7 @@ def render_html(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
             f"""
             <div class="truncation-note">
               Showing first {len(visible_findings)} findings; {omitted_findings} omitted.
-              Use <code>--max-findings all</code> to include every detail. JSON and SARIF outputs remain complete.
+              Use <code>--max-findings all</code> to include every detail. {escape(COMPLETE_OUTPUTS_NOTE)}
             </div>
             """
             + finding_cards
@@ -640,7 +1322,7 @@ def render_html(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
     ) or "<tr><td>-</td><td>-</td><td>-</td></tr>"
     graph_svg = _render_graph_svg(report)
 
-    return f"""<!doctype html>
+    html = f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -683,6 +1365,9 @@ def render_html(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
     .severity-high .badge {{ background: #fee2e2; color: var(--danger); }}
     .severity-medium .badge {{ background: #fef3c7; color: var(--warn); }}
     .file {{ color: #5b6470; font-family: Consolas, monospace; }}
+    code {{ background: #efe7d7; border-radius: 6px; font-family: Consolas, monospace; padding: 2px 5px; }}
+    .next-steps {{ margin: 0; padding-left: 22px; }}
+    .next-steps li {{ margin: 8px 0; }}
     .graph-shell {{ background: linear-gradient(180deg, #fcfaf5, #f3ecdf); border: 1px solid var(--border); border-radius: 18px; padding: 14px; overflow: auto; }}
     table {{ width: 100%; border-collapse: collapse; }}
     th, td {{ border-top: 1px solid var(--border); text-align: left; padding: 12px 8px; }}
@@ -703,16 +1388,26 @@ def render_html(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
       </div>
     </section>
 
+    <section class="panel">
+      <h2>Review boundary</h2>
+      <p>{escape(REVIEW_BOUNDARY_TEXT)}</p>
+    </section>
+
     <section class="grid">{score_markup}</section>
 
     <section class="panel">
       <h2>Top risks</h2>
       <div class="risk-list">{risk_markup}</div>
-    </section>
+    </section>{compose_summary_section}
 
     <section class="panel">
       <h2>Remediation plan</h2>
       <div class="remediation-list">{remediation_markup}</div>
+    </section>
+
+    <section class="panel">
+      <h2>Next steps</h2>
+      <ul class="next-steps">{next_steps_markup}</ul>
     </section>
 
     <section class="panel">
@@ -736,3 +1431,4 @@ def render_html(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
 </body>
 </html>
 """
+    return "\n".join(line.rstrip() for line in html.splitlines()) + "\n"

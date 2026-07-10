@@ -2,13 +2,17 @@ name: "labcheck reproducibility audit"
 description: "Run a no-key reproducibility audit for notebook-heavy research and ML repositories."
 author: "Thomas Aquinas"
 
+branding:
+  icon: "search"
+  color: "green"
+
 inputs:
   target:
     description: "Folder, notebook, zip archive, or public GitHub repo URL to scan."
     required: false
     default: "."
   report-format:
-    description: "Human-readable report format: text, markdown, json, or html."
+    description: "Report format: text, markdown, json, csv, html, or sarif."
     required: false
     default: "markdown"
   report-path:
@@ -19,6 +23,10 @@ inputs:
     description: "Path where the machine-readable JSON report should be written."
     required: false
     default: "labcheck-report.json"
+  csv-path:
+    description: "Path where the spreadsheet-friendly CSV findings table should be written."
+    required: false
+    default: "labcheck-report.csv"
   sarif-path:
     description: "Path where the SARIF report should be written."
     required: false
@@ -31,6 +39,22 @@ inputs:
     description: "Path where the compact Markdown scorecard should be written."
     required: false
     default: "labcheck-scorecard.md"
+  target-fit-path:
+    description: "Path where the outreach target-fit card should be written."
+    required: false
+    default: "labcheck-target-fit.md"
+  issue-draft-path:
+    description: "Path where the maintainer-friendly GitHub issue draft should be written."
+    required: false
+    default: "labcheck-issue-draft.md"
+  compare-base-json-path:
+    description: "Optional earlier labcheck JSON report to compare against the current JSON report."
+    required: false
+    default: ""
+  compare-path:
+    description: "Path where the before/after comparison Markdown should be written when compare-base-json-path is provided."
+    required: false
+    default: "labcheck-compare.md"
   baseline-path:
     description: "Optional labcheck baseline JSON. Matching known findings are ignored."
     required: false
@@ -67,6 +91,9 @@ outputs:
   json-path:
     description: "Path to the machine-readable labcheck JSON report."
     value: ${{ steps.paths.outputs.json-path }}
+  csv-path:
+    description: "Path to the spreadsheet-friendly labcheck CSV findings table."
+    value: ${{ steps.paths.outputs.csv-path }}
   sarif-path:
     description: "Path to the labcheck SARIF report."
     value: ${{ steps.paths.outputs.sarif-path }}
@@ -76,6 +103,15 @@ outputs:
   scorecard-path:
     description: "Path to the compact labcheck Markdown scorecard."
     value: ${{ steps.paths.outputs.scorecard-path }}
+  target-fit-path:
+    description: "Path to the labcheck outreach target-fit card."
+    value: ${{ steps.paths.outputs.target-fit-path }}
+  issue-draft-path:
+    description: "Path to the maintainer-friendly labcheck GitHub issue draft."
+    value: ${{ steps.paths.outputs.issue-draft-path }}
+  compare-path:
+    description: "Path to the labcheck before/after comparison note, when generated."
+    value: ${{ steps.paths.outputs.compare-path }}
   overall-score:
     description: "Overall reproducibility score from 0 to 100."
     value: ${{ steps.run.outputs.overall-score }}
@@ -106,18 +142,53 @@ outputs:
   low-count:
     description: "Number of low-severity findings after baseline filtering."
     value: ${{ steps.run.outputs.low-count }}
+  triage-status:
+    description: "Compact handoff status: strong, blocked, mostly-usable, or needs-work."
+    value: ${{ steps.run.outputs.triage-status }}
+  triage-signal:
+    description: "Human-readable handoff signal derived from the score and severity mix."
+    value: ${{ steps.run.outputs.triage-signal }}
+  top-risk-id:
+    description: "Finding ID for the highest-priority grouped risk, or empty when no findings remain."
+    value: ${{ steps.run.outputs.top-risk-id }}
+  top-risk-title:
+    description: "Title for the highest-priority grouped risk, or empty when no findings remain."
+    value: ${{ steps.run.outputs.top-risk-title }}
+  top-risk-severity:
+    description: "Severity for the highest-priority grouped risk, or empty when no findings remain."
+    value: ${{ steps.run.outputs.top-risk-severity }}
+  top-risk-file:
+    description: "First affected file for the highest-priority grouped risk, or empty when no findings remain."
+    value: ${{ steps.run.outputs.top-risk-file }}
+  top-risk-count:
+    description: "Number of findings in the highest-priority grouped risk."
+    value: ${{ steps.run.outputs.top-risk-count }}
 
 runs:
   using: "composite"
   steps:
     - id: paths
       shell: bash
+      env:
+        LABCHECK_REPORT_PATH: ${{ inputs.report-path }}
+        LABCHECK_JSON_PATH: ${{ inputs.json-path }}
+        LABCHECK_CSV_PATH: ${{ inputs.csv-path }}
+        LABCHECK_SARIF_PATH: ${{ inputs.sarif-path }}
+        LABCHECK_BADGE_PATH: ${{ inputs.badge-path }}
+        LABCHECK_SCORECARD_PATH: ${{ inputs.scorecard-path }}
+        LABCHECK_TARGET_FIT_PATH: ${{ inputs.target-fit-path }}
+        LABCHECK_ISSUE_DRAFT_PATH: ${{ inputs.issue-draft-path }}
+        LABCHECK_COMPARE_PATH: ${{ inputs.compare-path }}
       run: |
-        printf 'report-path=%s\n' "${{ inputs.report-path }}" >> "$GITHUB_OUTPUT"
-        printf 'json-path=%s\n' "${{ inputs.json-path }}" >> "$GITHUB_OUTPUT"
-        printf 'sarif-path=%s\n' "${{ inputs.sarif-path }}" >> "$GITHUB_OUTPUT"
-        printf 'badge-path=%s\n' "${{ inputs.badge-path }}" >> "$GITHUB_OUTPUT"
-        printf 'scorecard-path=%s\n' "${{ inputs.scorecard-path }}" >> "$GITHUB_OUTPUT"
+        printf 'report-path=%s\n' "$LABCHECK_REPORT_PATH" >> "$GITHUB_OUTPUT"
+        printf 'json-path=%s\n' "$LABCHECK_JSON_PATH" >> "$GITHUB_OUTPUT"
+        printf 'csv-path=%s\n' "$LABCHECK_CSV_PATH" >> "$GITHUB_OUTPUT"
+        printf 'sarif-path=%s\n' "$LABCHECK_SARIF_PATH" >> "$GITHUB_OUTPUT"
+        printf 'badge-path=%s\n' "$LABCHECK_BADGE_PATH" >> "$GITHUB_OUTPUT"
+        printf 'scorecard-path=%s\n' "$LABCHECK_SCORECARD_PATH" >> "$GITHUB_OUTPUT"
+        printf 'target-fit-path=%s\n' "$LABCHECK_TARGET_FIT_PATH" >> "$GITHUB_OUTPUT"
+        printf 'issue-draft-path=%s\n' "$LABCHECK_ISSUE_DRAFT_PATH" >> "$GITHUB_OUTPUT"
+        printf 'compare-path=%s\n' "$LABCHECK_COMPARE_PATH" >> "$GITHUB_OUTPUT"
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -133,55 +204,106 @@ runs:
     - id: run
       name: Run labcheck
       shell: bash
+      env:
+        LABCHECK_TARGET: ${{ inputs.target }}
+        LABCHECK_REPORT_FORMAT: ${{ inputs.report-format }}
+        LABCHECK_REPORT_PATH: ${{ inputs.report-path }}
+        LABCHECK_JSON_PATH: ${{ inputs.json-path }}
+        LABCHECK_CSV_PATH: ${{ inputs.csv-path }}
+        LABCHECK_SARIF_PATH: ${{ inputs.sarif-path }}
+        LABCHECK_BADGE_PATH: ${{ inputs.badge-path }}
+        LABCHECK_SCORECARD_PATH: ${{ inputs.scorecard-path }}
+        LABCHECK_TARGET_FIT_PATH: ${{ inputs.target-fit-path }}
+        LABCHECK_ISSUE_DRAFT_PATH: ${{ inputs.issue-draft-path }}
+        LABCHECK_COMPARE_BASE_JSON_PATH: ${{ inputs.compare-base-json-path }}
+        LABCHECK_COMPARE_PATH: ${{ inputs.compare-path }}
+        LABCHECK_BASELINE_PATH: ${{ inputs.baseline-path }}
+        LABCHECK_CONFIG_PATH: ${{ inputs.config-path }}
+        LABCHECK_MAX_FINDINGS: ${{ inputs.max-findings }}
+        LABCHECK_JOB_SUMMARY: ${{ inputs.job-summary }}
+        LABCHECK_FAIL_ON: ${{ inputs.fail-on }}
+        LABCHECK_MIN_SCORE: ${{ inputs.min-score }}
       run: |
         BASELINE_ARGS=()
-        if [ -n "${{ inputs.baseline-path }}" ]; then
-          BASELINE_ARGS=(--baseline "${{ inputs.baseline-path }}")
+        if [ -n "$LABCHECK_BASELINE_PATH" ]; then
+          BASELINE_ARGS=(--baseline "$LABCHECK_BASELINE_PATH")
         fi
         CONFIG_ARGS=()
-        if [ -n "${{ inputs.config-path }}" ]; then
-          CONFIG_ARGS=(--config "${{ inputs.config-path }}")
+        if [ -n "$LABCHECK_CONFIG_PATH" ]; then
+          CONFIG_ARGS=(--config "$LABCHECK_CONFIG_PATH")
         fi
         MIN_SCORE_ARGS=()
-        if [ -n "${{ inputs.min-score }}" ]; then
-          MIN_SCORE_ARGS=(--min-score "${{ inputs.min-score }}")
+        if [ -n "$LABCHECK_MIN_SCORE" ]; then
+          MIN_SCORE_ARGS=(--min-score "$LABCHECK_MIN_SCORE")
         fi
         set +e
-        labcheck scan "${{ inputs.target }}" \
-          --format "${{ inputs.report-format }}" \
-          --output "${{ inputs.report-path }}" \
-          --json-output "${{ inputs.json-path }}" \
-          --sarif-output "${{ inputs.sarif-path }}" \
-          --badge-output "${{ inputs.badge-path }}" \
-          --scorecard-output "${{ inputs.scorecard-path }}" \
-          --max-findings "${{ inputs.max-findings }}" \
+        labcheck scan "$LABCHECK_TARGET" \
+          --format "$LABCHECK_REPORT_FORMAT" \
+          --output "$LABCHECK_REPORT_PATH" \
+          --json-output "$LABCHECK_JSON_PATH" \
+          --csv-output "$LABCHECK_CSV_PATH" \
+          --sarif-output "$LABCHECK_SARIF_PATH" \
+          --badge-output "$LABCHECK_BADGE_PATH" \
+          --scorecard-output "$LABCHECK_SCORECARD_PATH" \
+          --target-fit-output "$LABCHECK_TARGET_FIT_PATH" \
+          --issue-output "$LABCHECK_ISSUE_DRAFT_PATH" \
+          --max-findings "$LABCHECK_MAX_FINDINGS" \
           "${CONFIG_ARGS[@]}" \
           "${BASELINE_ARGS[@]}" \
           "${MIN_SCORE_ARGS[@]}" \
-          --fail-on "${{ inputs.fail-on }}"
+          --fail-on "$LABCHECK_FAIL_ON"
         LABCHECK_EXIT_CODE=$?
         set -e
 
-        if [ "${{ inputs.job-summary }}" = "true" ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+        LABCHECK_COMPARE_EXIT_CODE=0
+        if [ -n "$LABCHECK_COMPARE_BASE_JSON_PATH" ]; then
+          if [ -f "$LABCHECK_COMPARE_BASE_JSON_PATH" ] && [ -f "$LABCHECK_JSON_PATH" ]; then
+            set +e
+            labcheck compare "$LABCHECK_COMPARE_BASE_JSON_PATH" "$LABCHECK_JSON_PATH" \
+              --output "$LABCHECK_COMPARE_PATH"
+            LABCHECK_COMPARE_EXIT_CODE=$?
+            set -e
+          elif [ ! -f "$LABCHECK_COMPARE_BASE_JSON_PATH" ]; then
+            echo "::warning::labcheck compare skipped because compare-base-json-path was not found: $LABCHECK_COMPARE_BASE_JSON_PATH"
+          elif [ ! -f "$LABCHECK_JSON_PATH" ]; then
+            echo "::warning::labcheck compare skipped because the current JSON report was not found: $LABCHECK_JSON_PATH"
+          fi
+        fi
+
+        if [ "$LABCHECK_JOB_SUMMARY" = "true" ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
           {
             printf '## labcheck reproducibility audit\n\n'
-            if [ "${{ inputs.report-format }}" = "markdown" ] && [ -f "${{ inputs.report-path }}" ]; then
-              if [ -f "${{ inputs.scorecard-path }}" ]; then
-                cat "${{ inputs.scorecard-path }}"
+            if [ "$LABCHECK_REPORT_FORMAT" = "markdown" ] && [ -f "$LABCHECK_REPORT_PATH" ]; then
+              if [ -f "$LABCHECK_SCORECARD_PATH" ]; then
+                cat "$LABCHECK_SCORECARD_PATH"
                 printf '\n\n---\n\n'
               fi
-              cat "${{ inputs.report-path }}"
+              if [ -f "$LABCHECK_TARGET_FIT_PATH" ]; then
+                cat "$LABCHECK_TARGET_FIT_PATH"
+                printf '\n\n---\n\n'
+              fi
+              cat "$LABCHECK_REPORT_PATH"
+              if [ -n "$LABCHECK_COMPARE_BASE_JSON_PATH" ] && [ -f "$LABCHECK_COMPARE_PATH" ]; then
+                printf '\n\n---\n\n'
+                cat "$LABCHECK_COMPARE_PATH"
+              fi
             else
-              printf 'Report written to `%s`.\n\n' "${{ inputs.report-path }}"
-              printf 'Scorecard written to `%s`.\n' "${{ inputs.scorecard-path }}"
-              printf 'JSON report written to `%s`.\n' "${{ inputs.json-path }}"
-              printf 'SARIF report written to `%s`.\n' "${{ inputs.sarif-path }}"
-              printf 'Badge written to `%s`.\n' "${{ inputs.badge-path }}"
+              printf 'Report written to `%s`.\n\n' "$LABCHECK_REPORT_PATH"
+              printf 'Scorecard written to `%s`.\n' "$LABCHECK_SCORECARD_PATH"
+              printf 'JSON report written to `%s`.\n' "$LABCHECK_JSON_PATH"
+              printf 'CSV findings table written to `%s`.\n' "$LABCHECK_CSV_PATH"
+              printf 'SARIF report written to `%s`.\n' "$LABCHECK_SARIF_PATH"
+              printf 'Badge written to `%s`.\n' "$LABCHECK_BADGE_PATH"
+              printf 'Target-fit card written to `%s`.\n' "$LABCHECK_TARGET_FIT_PATH"
+              printf 'Issue draft written to `%s`.\n' "$LABCHECK_ISSUE_DRAFT_PATH"
+              if [ -n "$LABCHECK_COMPARE_BASE_JSON_PATH" ] && [ -f "$LABCHECK_COMPARE_PATH" ]; then
+                printf 'Compare note written to `%s`.\n' "$LABCHECK_COMPARE_PATH"
+              fi
             fi
           } >> "$GITHUB_STEP_SUMMARY"
         fi
 
-        python - "${{ inputs.json-path }}" <<'PY'
+        python - "$LABCHECK_JSON_PATH" <<'PY'
         import json
         import os
         import sys
@@ -198,10 +320,66 @@ runs:
                 if severity in severity_counts:
                     severity_counts[severity] += 1
 
+            severity_rank = {"high": 0, "medium": 1, "low": 2}
+            grouped_risks = {}
+            for finding in findings:
+                key = (
+                    finding.get("check_id", ""),
+                    finding.get("title", ""),
+                    finding.get("severity", ""),
+                    finding.get("category", ""),
+                )
+                if key not in grouped_risks:
+                    grouped_risks[key] = {
+                        "check_id": key[0],
+                        "title": key[1],
+                        "severity": key[2],
+                        "category": key[3],
+                        "count": 0,
+                        "file_path": finding.get("file_path", ""),
+                    }
+                grouped_risks[key]["count"] += 1
+
+            top_risk = {}
+            if grouped_risks:
+                top_risk = sorted(
+                    grouped_risks.values(),
+                    key=lambda risk: (
+                        severity_rank.get(risk.get("severity"), 99),
+                        -int(risk.get("count", 0)),
+                        risk.get("check_id", ""),
+                    ),
+                )[0]
+
+            def one_line(value):
+                return str(value or "").replace("\r", " ").replace("\n", " ").strip()
+
+            def pluralize(count, singular):
+                return f"{count} {singular}" if count == 1 else f"{count} {singular}s"
+
             scores = data.get("scores", {})
             summary = data.get("summary", {})
+            try:
+                overall_score = int(scores.get("overall_score", 0) or 0)
+            except (TypeError, ValueError):
+                overall_score = 0
+            if overall_score >= 90 and severity_counts["high"] == 0:
+                triage_status = "strong"
+                triage_signal = "Strong handoff candidate: no high-severity findings and the score is near release-ready."
+            elif severity_counts["high"]:
+                triage_status = "blocked"
+                triage_signal = (
+                    f"Not handoff-ready yet: fix {pluralize(severity_counts['high'], 'high-severity finding')} "
+                    "before sending this repo to a reviewer, student, or new engineer."
+                )
+            elif overall_score >= 75:
+                triage_status = "mostly-usable"
+                triage_signal = "Mostly usable, but the medium/low findings are still worth cleaning before a formal handoff."
+            else:
+                triage_status = "needs-work"
+                triage_signal = "Needs reproducibility work before handoff; start with the top risks below."
             outputs = {
-                "overall-score": scores.get("overall_score", ""),
+                "overall-score": overall_score,
                 "environment-score": scores.get("environment_rebuildability", ""),
                 "determinism-score": scores.get("notebook_determinism", ""),
                 "artifact-score": scores.get("artifact_availability", ""),
@@ -211,10 +389,20 @@ runs:
                 "high-count": severity_counts["high"],
                 "medium-count": severity_counts["medium"],
                 "low-count": severity_counts["low"],
+                "triage-status": triage_status,
+                "triage-signal": triage_signal,
+                "top-risk-id": top_risk.get("check_id", ""),
+                "top-risk-title": top_risk.get("title", ""),
+                "top-risk-severity": top_risk.get("severity", ""),
+                "top-risk-file": top_risk.get("file_path", ""),
+                "top-risk-count": top_risk.get("count", 0),
             }
             with open(output_path, "a", encoding="utf-8") as handle:
                 for key, value in outputs.items():
-                    handle.write(f"{key}={value}\n")
+                    handle.write(f"{key}={one_line(value)}\n")
         PY
 
-        exit "$LABCHECK_EXIT_CODE"
+        if [ "$LABCHECK_EXIT_CODE" -ne 0 ]; then
+          exit "$LABCHECK_EXIT_CODE"
+        fi
+        exit "$LABCHECK_COMPARE_EXIT_CODE"

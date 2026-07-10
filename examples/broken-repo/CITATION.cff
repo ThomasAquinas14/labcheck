@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+title: Broken Labcheck Demo Repository
+message: Cite this example if it helps demonstrate reproducibility handoff checks.
+type: software
+authors:
+  - family-names: Example
+    given-names: Labcheck
+repository-code: https://github.com/ThomasAquinas14/labcheck

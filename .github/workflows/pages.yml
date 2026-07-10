@@ -27,6 +27,9 @@ jobs:
       - name: Build static site
         run: python scripts/build_static_site.py
 
+      - name: Check static export
+        run: python scripts/check_static_export.py
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

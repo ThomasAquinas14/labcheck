@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://thomasaquinas14.github.io/labcheck/sitemap.xml

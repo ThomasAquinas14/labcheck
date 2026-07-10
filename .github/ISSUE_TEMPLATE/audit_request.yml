@@ -1,0 +1,59 @@
+name: Audit request
+description: Request a labcheck scorecard for a public research, ML, data, or notebook-heavy repository.
+title: "[Audit request]: "
+labels: ["audit-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when you want a lightweight, public, no-key reproducibility review.
+
+        Please only submit repositories you are allowed to share publicly. labcheck is designed for public repos, local use, and deterministic static analysis; it does not need API keys or a hosted backend.
+  - type: input
+    id: repo
+    attributes:
+      label: Public repository URL
+      description: The repo should be public and safe for maintainers to inspect.
+      placeholder: "https://github.com/owner/repo"
+    validations:
+      required: true
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Why do you want the audit?
+      options:
+        - Lab/student handoff
+        - Paper/reviewer reproducibility
+        - Founder/engineering handoff
+        - OSS maintainer onboarding
+        - Course or teaching repo
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What should the audit pay special attention to?
+      placeholder: |
+        Example: Notebook-heavy repo for a paper; data is expected to be restored through DVC; main entrypoint is notebooks/train.ipynb.
+    validations:
+      required: true
+  - type: textarea
+    id: expected_artifacts
+    attributes:
+      label: Known external artifacts or intentional noise
+      description: Mention expected external datasets, generated files, archival notebooks, or directories that should not be over-interpreted.
+      placeholder: |
+        Datasets are downloaded from Zenodo.
+        notebooks/archive/ is intentionally old.
+        outputs/ contains illustrative figures.
+  - type: checkboxes
+    id: permission
+    attributes:
+      label: Permission and scope
+      options:
+        - label: This repository is public and safe to inspect in an open issue.
+          required: true
+        - label: I understand labcheck findings are heuristic reproducibility signals, not a claim that the repo is scientifically invalid.
+          required: true

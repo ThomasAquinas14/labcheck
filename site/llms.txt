@@ -1,0 +1,63 @@
+# labcheck
+
+> labcheck is a no-key, local-first reproducibility auditor for notebook-heavy research and ML repositories.
+
+It helps professors, research labs, ML/data founders, and OSS maintainers answer one question: if this repo is handed to a new student, reviewer, or engineer, can they actually rerun it?
+
+## Primary Links
+
+- Landing page: https://thomasaquinas14.github.io/labcheck/
+- Browser demo: https://thomasaquinas14.github.io/labcheck/demo.html
+- GitHub repository: https://github.com/ThomasAquinas14/labcheck
+- README: https://thomasaquinas14.github.io/labcheck/README.md
+- Install guide: https://thomasaquinas14.github.io/labcheck/docs/install.md
+- First audit guide: https://thomasaquinas14.github.io/labcheck/docs/first-audit.md
+- Reproducibility pattern gallery: https://thomasaquinas14.github.io/labcheck/docs/reproducibility-patterns.md
+- GitHub Action guide: https://thomasaquinas14.github.io/labcheck/docs/github-action.md
+- Scoring guide: https://thomasaquinas14.github.io/labcheck/docs/scoring-guide.md
+- Privacy and safety model: https://thomasaquinas14.github.io/labcheck/docs/privacy-and-safety.md
+- Sample HTML audit: https://thomasaquinas14.github.io/labcheck/docs/sample-audits/broken-repo-audit.html
+- Sample scorecard: https://thomasaquinas14.github.io/labcheck/docs/sample-audits/broken-repo-scorecard.md
+- Sample target-fit card: https://thomasaquinas14.github.io/labcheck/docs/sample-audits/broken-repo-target-fit.md
+- Sample outreach note: https://thomasaquinas14.github.io/labcheck/docs/sample-audits/broken-repo-outreach-note.md
+- Sample issue draft: https://thomasaquinas14.github.io/labcheck/docs/sample-audits/broken-repo-issue-draft.md
+- Sample labeled issue bundle: https://thomasaquinas14.github.io/labcheck/docs/sample-audits/broken-repo-labeled-issue.md
+- Case studies: https://thomasaquinas14.github.io/labcheck/docs/case-studies.md
+- Comparison guide: https://thomasaquinas14.github.io/labcheck/docs/comparison.md
+- Lab adoption guide: https://thomasaquinas14.github.io/labcheck/docs/lab-adoption-guide.md
+- Launch kit: https://thomasaquinas14.github.io/labcheck/docs/launch-kit.md
+- Launch post after-action checklist: https://thomasaquinas14.github.io/labcheck/docs/launch-post-after-action.md
+- Outreach playbook: https://thomasaquinas14.github.io/labcheck/docs/outreach-playbook.md
+- Public triage board template: https://thomasaquinas14.github.io/labcheck/docs/public-triage-board.md
+- Reply-derived case study seed: https://thomasaquinas14.github.io/labcheck/docs/reply-derived-case-study-seed.md
+- Reply to case study checklist: https://thomasaquinas14.github.io/labcheck/docs/reply-to-case-study-checklist.md
+- Maintainer reply templates: https://thomasaquinas14.github.io/labcheck/docs/maintainer-reply-templates.md
+- Roadmap: https://thomasaquinas14.github.io/labcheck/docs/roadmap.md
+- Public deploy guide: https://thomasaquinas14.github.io/labcheck/docs/public-deploy-guide.md
+
+## What labcheck Does
+
+- Scans notebooks, Python scripts, manifests, README instructions, CI workflows, Dockerfiles, and simple data lineage.
+- Flags reproducibility risks such as hidden notebook state, missing artifacts, unpinned dependencies, README drift, missing local helpers, nondeterministic ML code, unsafe remote artifacts, and CI gaps.
+- Produces a reproducibility score, category scores, top risks, remediation steps, JSON, SARIF, Markdown, HTML, scorecards, issue drafts, badges, and audit packs.
+
+## Safety Model
+
+- No API keys are required.
+- No hosted backend is required.
+- The browser demo keeps selected files local in the browser tab and can fetch bounded public GitHub files client-side without tokens, prioritizing manifests, README files, CI workflows, notebooks, and Python source.
+- The CLI performs deterministic static analysis and does not execute arbitrary project code by default.
+- The privacy and safety model documents what is local-only, what calls GitHub directly, and what not to scan or publish.
+
+## Good First Commands
+
+```bash
+python -m pip install -e .
+labcheck doctor .
+labcheck demo-repo
+labcheck scorecard labcheck-demo-repo
+labcheck scorecard examples/broken-repo
+labcheck pack . --output-dir labcheck-audit --zip
+labcheck demo-link https://github.com/owner/repo
+labcheck demo-link https://github.com/owner/repo --format markdown --auto-audit
+```

@@ -41,7 +41,7 @@ Do not track private personal information in the public repository. Keep real em
 ### Professor or lab
 
 ```text
-I noticed your lab shares notebook-heavy work publicly. I built a no-key reproducibility auditor that catches hidden notebook state, missing input files, stale setup commands, and unclear output provenance. If useful, I can run it on one public repo and send a short scorecard.
+I noticed your lab shares notebook-heavy work publicly. I built a no-key reproducibility auditor that catches hidden notebook state, missing input files, dependency/CI drift, stale setup commands, and unclear output provenance. If useful, I can run it on one public repo and send a short scorecard.
 ```
 
 ### Founder or ML/data lead
@@ -53,7 +53,7 @@ I built a no-key reproducibility and portability auditor for experiment-heavy ML
 ### OSS maintainer
 
 ```text
-I built a no-key GitHub Action/CLI that audits notebook-heavy repos for hidden state, missing artifacts, stale README commands, and unseeded randomness. It can start as a soft report artifact without failing CI. Curious if this would be useful for your examples or contributor onboarding.
+I built a no-key GitHub Action/CLI that audits notebook-heavy repos for hidden state, missing artifacts, globbed data directories that were never shared, unsorted file discovery that can reshuffle inputs, unpinned Hugging Face models/datasets, interactive prompts that block unattended reruns, output save paths that fail on fresh clones, timestamped output drift, dependency/CI drift, NumPy/ML split/seed drift, stale README commands, and unseeded randomness. It can start as a soft report artifact without failing CI. Curious if this would be useful for your examples or contributor onboarding.
 ```
 
 ---
