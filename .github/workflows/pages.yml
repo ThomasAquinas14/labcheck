@@ -36,6 +36,7 @@ jobs:
           path: dist/site
 
   deploy:
+    if: ${{ github.event.repository.private == false }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
