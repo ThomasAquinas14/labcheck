@@ -40,6 +40,8 @@ class ScanSummary:
     notebooks: int
     python_files: int
     findings_count: int
+    capped_findings_count: int = 0
+    capped_checks: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

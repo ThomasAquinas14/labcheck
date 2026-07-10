@@ -5,6 +5,8 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 import tomllib
 
+from .check_catalog import CHECK_BY_ID
+
 DEFAULT_CONFIG_NAME = ".labcheck.toml"
 
 VALID_PROFILES = {"default", "education"}
@@ -71,11 +73,14 @@ def _load_severity_overrides(data: dict) -> dict[str, str]:
     for check_id, severity in severity_overrides.items():
         if not isinstance(check_id, str) or not check_id.strip():
             raise ValueError("Invalid labcheck config: severity_overrides keys must be check IDs")
+        normalized_check_id = check_id.strip().upper()
+        if normalized_check_id not in CHECK_BY_ID:
+            raise ValueError(f"Invalid labcheck config: unknown check ID in severity_overrides: {check_id}")
         if not isinstance(severity, str) or severity.lower() not in VALID_SEVERITIES:
             raise ValueError(
                 "Invalid labcheck config: severity_overrides values must be one of high, medium, or low"
             )
-        parsed[check_id.strip().upper()] = severity.lower()
+        parsed[normalized_check_id] = severity.lower()
     return parsed
 
 
@@ -87,9 +92,12 @@ def _load_finding_limits(data: dict) -> dict[str, int]:
     for check_id, limit in finding_limits.items():
         if not isinstance(check_id, str) or not check_id.strip():
             raise ValueError("Invalid labcheck config: finding_limits keys must be check IDs")
+        normalized_check_id = check_id.strip().upper()
+        if normalized_check_id not in CHECK_BY_ID:
+            raise ValueError(f"Invalid labcheck config: unknown check ID in finding_limits: {check_id}")
         if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
             raise ValueError("Invalid labcheck config: finding_limits values must be positive integers")
-        parsed[check_id.strip().upper()] = limit
+        parsed[normalized_check_id] = limit
     return parsed
 
 

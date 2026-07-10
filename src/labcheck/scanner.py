@@ -165,7 +165,9 @@ def score_findings(findings: list[Finding]) -> ScoreCard:
     )
 
 
-def _filter_configured_findings(findings: list[Finding], config: LabcheckConfig) -> list[Finding]:
+def _filter_configured_findings(
+    findings: list[Finding], config: LabcheckConfig
+) -> tuple[list[Finding], dict[str, int]]:
     filtered = [
         finding
         for finding in findings
@@ -182,10 +184,11 @@ def _filter_configured_findings(findings: list[Finding], config: LabcheckConfig)
 
     finding_limits = effective_finding_limits(config)
     if not finding_limits:
-        return filtered
+        return filtered, {}
 
     limited: list[Finding] = []
     counts: dict[str, int] = {}
+    capped_counts: dict[str, int] = {}
     for finding in filtered:
         limit = finding_limits.get(finding.check_id)
         if limit is None:
@@ -193,10 +196,11 @@ def _filter_configured_findings(findings: list[Finding], config: LabcheckConfig)
             continue
         count = counts.get(finding.check_id, 0)
         if count >= limit:
+            capped_counts[finding.check_id] = capped_counts.get(finding.check_id, 0) + 1
             continue
         counts[finding.check_id] = count + 1
         limited.append(finding)
-    return limited
+    return limited, capped_counts
 
 
 def scan_path(target: str, config_path: str | None = None) -> Report:
@@ -296,7 +300,7 @@ def scan_path(target: str, config_path: str | None = None) -> Report:
         findings.extend(check_missing_run_instructions(repo_root, notebooks, python_files))
         findings.extend(check_missing_dependency_setup_instructions(repo_root, notebooks, python_files))
         findings.extend(check_orphan_workflow_nodes(repo_root, graph))
-        findings = _filter_configured_findings(findings, config)
+        findings, capped_counts = _filter_configured_findings(findings, config)
 
         scores = score_findings(findings)
         summary = ScanSummary(
@@ -304,5 +308,7 @@ def scan_path(target: str, config_path: str | None = None) -> Report:
             notebooks=len(notebooks),
             python_files=len(python_files),
             findings_count=len(findings),
+            capped_findings_count=sum(capped_counts.values()),
+            capped_checks=dict(sorted(capped_counts.items())),
         )
         return Report(summary=summary, scores=scores, findings=findings, graph=graph)

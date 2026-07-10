@@ -181,6 +181,21 @@ def _severity_counts(report: Report) -> dict[str, int]:
     return counts
 
 
+def _capped_findings_note(report: Report) -> str:
+    capped_count = report.summary.capped_findings_count
+    if capped_count <= 0:
+        return ""
+    capped_checks = ", ".join(
+        f"{check_id}: {count}"
+        for check_id, count in sorted(report.summary.capped_checks.items())
+    )
+    detail = f" ({capped_checks})" if capped_checks else ""
+    return (
+        f"Configured finding limits omitted {_pluralize(capped_count, 'finding')}{detail}. "
+        "Counts and scores are based on retained findings after caps."
+    )
+
+
 def _top_risks(report: Report, limit: int = 5) -> list[RiskSummary]:
     grouped: dict[tuple[str, str, str, str], dict[str, object]] = {}
     for finding in report.findings:
@@ -511,12 +526,11 @@ def render_text(report: Report, max_findings: int | None = DEFAULT_HUMAN_FINDING
         f"- Onboarding Readiness: {report.scores.onboarding_readiness}",
         "",
         f"Severity Mix: {severities['high']} high, {severities['medium']} medium, {severities['low']} low",
-        "",
-        "Review Boundary:",
-        REVIEW_BOUNDARY_TEXT,
-        "",
-        "Top Risks:",
     ]
+    capped_note = _capped_findings_note(report)
+    if capped_note:
+        lines.extend(["", "Configured Finding Limits:", capped_note])
+    lines.extend(["", "Review Boundary:", REVIEW_BOUNDARY_TEXT, "", "Top Risks:"])
     if risks:
         for risk in risks:
             scope = f"{_pluralize(risk.count, 'finding')} across {_pluralize(len(risk.affected_files), 'file')}"
@@ -592,24 +606,31 @@ def render_markdown(report: Report, max_findings: int | None = DEFAULT_HUMAN_FIN
         f"- Target: `{report.summary.target}`",
         f"- Overall Score: **{report.scores.overall_score}**",
         f"- Severity Mix: **{severities['high']} high**, **{severities['medium']} medium**, **{severities['low']} low**",
-        "",
-        "## Review Boundary",
-        "",
-        REVIEW_BOUNDARY_TEXT,
-        "",
-        "## Scores",
-        "",
-        "| Category | Score | What it means |",
-        "|---|---:|---|",
-        f"| Environment Rebuildability | {report.scores.environment_rebuildability} | {CATEGORY_HELP['environment_rebuildability']} |",
-        f"| Notebook Determinism | {report.scores.notebook_determinism} | {CATEGORY_HELP['notebook_determinism']} |",
-        f"| Artifact Availability | {report.scores.artifact_availability} | {CATEGORY_HELP['artifact_availability']} |",
-        f"| Portability | {report.scores.portability} | {CATEGORY_HELP['portability']} |",
-        f"| Onboarding Readiness | {report.scores.onboarding_readiness} | {CATEGORY_HELP['onboarding_readiness']} |",
-        "",
-        "## Top Risks",
-        "",
     ]
+    capped_note = _capped_findings_note(report)
+    if capped_note:
+        lines.append(f"- Configured finding limits: {capped_note}")
+    lines.extend(
+        [
+            "",
+            "## Review Boundary",
+            "",
+            REVIEW_BOUNDARY_TEXT,
+            "",
+            "## Scores",
+            "",
+            "| Category | Score | What it means |",
+            "|---|---:|---|",
+            f"| Environment Rebuildability | {report.scores.environment_rebuildability} | {CATEGORY_HELP['environment_rebuildability']} |",
+            f"| Notebook Determinism | {report.scores.notebook_determinism} | {CATEGORY_HELP['notebook_determinism']} |",
+            f"| Artifact Availability | {report.scores.artifact_availability} | {CATEGORY_HELP['artifact_availability']} |",
+            f"| Portability | {report.scores.portability} | {CATEGORY_HELP['portability']} |",
+            f"| Onboarding Readiness | {report.scores.onboarding_readiness} | {CATEGORY_HELP['onboarding_readiness']} |",
+            "",
+            "## Top Risks",
+            "",
+        ]
+    )
     if risks:
         lines.extend(
             [
@@ -752,18 +773,25 @@ def render_scorecard(report: Report) -> str:
             f"(`{severities['high']}` high, `{severities['medium']}` medium, `{severities['low']}` low)"
         ),
         f"- Weakest area: **{weakest_label}** ({weakest_score}/100) - {weakest_help}",
-        "",
-        "## Triage Signal",
-        "",
-        _scorecard_signal(report, severities),
-        "",
-        "## Review Boundary",
-        "",
-        REVIEW_BOUNDARY_TEXT,
-        "",
-        "## Top Risks",
-        "",
     ]
+    capped_note = _capped_findings_note(report)
+    if capped_note:
+        lines.append(f"- Configured finding limits: {capped_note}")
+    lines.extend(
+        [
+            "",
+            "## Triage Signal",
+            "",
+            _scorecard_signal(report, severities),
+            "",
+            "## Review Boundary",
+            "",
+            REVIEW_BOUNDARY_TEXT,
+            "",
+            "## Top Risks",
+            "",
+        ]
+    )
     if risks:
         lines.extend(["| Risk | Severity | Scope | First evidence |", "|---|---|---|---|"])
         for risk in risks:

@@ -4715,6 +4715,15 @@ KERAS_GENERATOR_FLOW_CALLS = {
     "flow_from_directory",
 }
 
+KERAS_SHUFFLE_SEED_POSITIONS = {
+    "flow": (3, 5, True),
+    "flow_from_directory": (6, 7, True),
+    "flow_from_dataframe": (10, 11, True),
+    "image_dataset_from_directory": (7, 8, True),
+    "text_dataset_from_directory": (6, 7, True),
+    "timeseries_dataset_from_array": (6, 7, False),
+}
+
 OPTUNA_SAMPLER_CALLS = {
     "CmaEsSampler",
     "NSGAIISampler",
@@ -5229,9 +5238,29 @@ def _lightgbm_imports(tree: ast.AST, source: str) -> tuple[set[str], set[str], s
 def _seeded_dict_assignment_names(tree: ast.AST, seed_keywords: set[str]) -> set[str]:
     names: set[str] = set()
     for node in ast.walk(tree):
-        if not isinstance(node, (ast.Assign, ast.AnnAssign)) or not _dict_has_any_key(node.value, seed_keywords):
-            continue
-        names.update(_assignment_target_names(node))
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            if _dict_has_any_key(node.value, seed_keywords):
+                names.update(_assignment_target_names(node))
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if (
+                    isinstance(target, ast.Subscript)
+                    and isinstance(target.value, ast.Name)
+                    and _literal_string(target.slice) in seed_keywords
+                    and not _is_none_literal(node.value)
+                ):
+                    names.add(target.value.id)
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "update"
+            and isinstance(node.func.value, ast.Name)
+            and (
+                any(_dict_has_any_key(arg, seed_keywords) for arg in node.args)
+                or any(keyword.arg in seed_keywords and not _is_none_literal(keyword.value) for keyword in node.keywords)
+            )
+        ):
+            names.add(node.func.value.id)
     return names
 
 
@@ -5386,10 +5415,28 @@ def _is_keras_dataset_call(
     )
 
 
-def _keras_shuffle_call_lacks_seed(call: ast.Call) -> bool:
-    if _keyword_is_false(call, "shuffle"):
+def _positional_arg(call: ast.Call, index: int) -> ast.AST | None:
+    return call.args[index] if len(call.args) > index else None
+
+
+def _keras_shuffle_call_lacks_seed(call: ast.Call, call_name: str) -> bool:
+    short_name = call_name.rsplit(".", 1)[-1]
+    positions = KERAS_SHUFFLE_SEED_POSITIONS.get(short_name)
+    if positions is None:
         return False
-    return not _call_has_non_none_keyword(call, "seed")
+    shuffle_index, seed_index, default_shuffle = positions
+    shuffle_arg = _positional_arg(call, shuffle_index)
+    if _keyword_is_false(call, "shuffle") or _literal_bool(shuffle_arg) is False:
+        return False
+    seed_arg = _positional_arg(call, seed_index)
+    has_seed = _call_has_non_none_keyword(call, "seed") or (
+        seed_arg is not None and not _is_none_literal(seed_arg)
+    )
+    if has_seed:
+        return False
+    if _call_has_true_keyword(call, "shuffle") or _literal_bool(shuffle_arg) is True:
+        return True
+    return default_shuffle
 
 
 def _keras_seed_issues(source: str) -> list[str]:
@@ -5411,14 +5458,14 @@ def _keras_seed_issues(source: str) -> list[str]:
             continue
         call_name = _call_name(node.func)
         if _is_keras_dataset_call(call_name, tensorflow_aliases, keras_aliases, direct_dataset_names):
-            if _keras_shuffle_call_lacks_seed(node):
+            if _keras_shuffle_call_lacks_seed(node, call_name):
                 issues.append(f"line {node.lineno}: {call_name}(...)")
             continue
         if not has_image_generator_context or not isinstance(node.func, ast.Attribute):
             continue
         if node.func.attr not in KERAS_GENERATOR_FLOW_CALLS:
             continue
-        if _keras_shuffle_call_lacks_seed(node):
+        if _keras_shuffle_call_lacks_seed(node, call_name):
             issues.append(f"line {node.lineno}: {call_name}(...)")
     return issues
 

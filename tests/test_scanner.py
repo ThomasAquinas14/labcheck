@@ -60,6 +60,7 @@ from labcheck.checks import (
     check_working_directory_changes,
 )
 from labcheck.graph import build_provenance_graph
+from labcheck.reporters import render_markdown
 from labcheck.scanner import scan_path
 from labcheck.source_analysis import SourceArtifact
 
@@ -360,6 +361,9 @@ def test_scan_config_can_limit_repeated_findings_per_check(tmp_path: Path) -> No
     report = scan_path(str(tmp_path), config_path=str(config_path))
 
     assert sum(finding.check_id == "LC007" for finding in report.findings) == 1
+    assert report.summary.capped_findings_count == 2
+    assert report.summary.capped_checks == {"LC007": 2}
+    assert "Configured finding limits omitted 2 findings (LC007: 2)" in render_markdown(report)
 
 
 def test_scan_education_profile_caps_tutorial_corpus_noise(tmp_path: Path) -> None:
@@ -5469,6 +5473,18 @@ def test_scan_rejects_invalid_finding_limits_config(tmp_path: Path) -> None:
         raise AssertionError("Expected invalid finding_limits config to fail")
 
 
+def test_scan_rejects_unknown_finding_limit_check_id(tmp_path: Path) -> None:
+    config_path = tmp_path / "custom.toml"
+    config_path.write_text("[finding_limits]\nLC999 = 1\n", encoding="utf-8")
+
+    try:
+        scan_path(str(tmp_path), config_path=str(config_path))
+    except ValueError as exc:
+        assert "unknown check ID in finding_limits" in str(exc)
+    else:
+        raise AssertionError("Expected unknown finding_limits check ID to fail")
+
+
 def test_scan_rejects_invalid_severity_overrides_config(tmp_path: Path) -> None:
     config_path = tmp_path / "custom.toml"
     config_path.write_text('[severity_overrides]\nLC007 = "urgent"\n', encoding="utf-8")
@@ -5479,6 +5495,18 @@ def test_scan_rejects_invalid_severity_overrides_config(tmp_path: Path) -> None:
         assert "severity_overrides values must be one of high, medium, or low" in str(exc)
     else:
         raise AssertionError("Expected invalid severity_overrides config to fail")
+
+
+def test_scan_rejects_unknown_severity_override_check_id(tmp_path: Path) -> None:
+    config_path = tmp_path / "custom.toml"
+    config_path.write_text('[severity_overrides]\nLC999 = "low"\n', encoding="utf-8")
+
+    try:
+        scan_path(str(tmp_path), config_path=str(config_path))
+    except ValueError as exc:
+        assert "unknown check ID in severity_overrides" in str(exc)
+    else:
+        raise AssertionError("Expected unknown severity_overrides check ID to fail")
 
 
 def test_scan_rejects_invalid_ignored_findings_config(tmp_path: Path) -> None:
@@ -8778,6 +8806,56 @@ booster = lgb.train(params, train_set)
     assert check_missing_lightgbm_seed(tmp_path, [artifact]) == []
 
 
+def test_lightgbm_seed_check_accepts_mutated_seed_params(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_lgbm.py"
+    source_path.write_text(
+        """
+import lightgbm as lgb
+
+params = {"objective": "binary"}
+params["seed"] = 42
+booster = lgb.train(params, train_set)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    assert check_missing_lightgbm_seed(tmp_path, [artifact]) == []
+
+
+def test_lightgbm_seed_check_accepts_updated_seed_params(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_lgbm.py"
+    source_path.write_text(
+        """
+import lightgbm as lgb
+
+params = {"objective": "binary"}
+params.update(feature_fraction_seed=42)
+booster = lgb.train(params, train_set)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    assert check_missing_lightgbm_seed(tmp_path, [artifact]) == []
+
+
 def test_catboost_seed_check_flags_seedless_estimator(tmp_path: Path) -> None:
     source_path = tmp_path / "train_cat.py"
     source_path.write_text(
@@ -8891,6 +8969,85 @@ ordered = generator.flow(x, y, shuffle=False)
     )
 
     assert check_missing_keras_dataset_seed(tmp_path, [artifact]) == []
+
+
+def test_keras_dataset_seed_check_accepts_positional_generator_seed(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_keras.py"
+    source_path.write_text(
+        """
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+generator = ImageDataGenerator()
+batches = generator.flow(x, y, 32, True, None, 42)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    assert check_missing_keras_dataset_seed(tmp_path, [artifact]) == []
+
+
+def test_keras_dataset_seed_check_accepts_default_ordered_timeseries(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_keras.py"
+    source_path.write_text(
+        """
+import keras
+
+dataset = keras.utils.timeseries_dataset_from_array(data, targets, sequence_length=12)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    assert check_missing_keras_dataset_seed(tmp_path, [artifact]) == []
+
+
+def test_keras_dataset_seed_check_flags_timeseries_shuffle_without_seed(tmp_path: Path) -> None:
+    source_path = tmp_path / "train_keras.py"
+    source_path.write_text(
+        """
+import keras
+
+dataset = keras.utils.timeseries_dataset_from_array(
+    data,
+    targets,
+    sequence_length=12,
+    shuffle=True,
+)
+""",
+        encoding="utf-8",
+    )
+    artifact = SourceArtifact(
+        path=source_path,
+        kind="python",
+        content=source_path.read_text(encoding="utf-8"),
+        reads=[],
+        writes=[],
+        uses_randomness=False,
+        seeds_randomness=False,
+    )
+
+    findings = check_missing_keras_dataset_seed(tmp_path, [artifact])
+
+    assert len(findings) == 1
+    assert findings[0].check_id == "LC076"
+    assert "timeseries_dataset_from_array" in findings[0].evidence
 
 
 def test_keras_dataset_seed_check_handles_utils_alias(tmp_path: Path) -> None:
